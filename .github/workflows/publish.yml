@@ -1,0 +1,84 @@
+name: 发布 MSLX Plugin Dev Skill 至 npm
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: '版本递增方式 (patch / minor / major)'
+        required: false
+        default: 'patch'
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish-npm:
+    runs-on: ubuntu-latest
+    name: 自动更新并发布到 npm
+
+    steps:
+      - name: 签出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 升级 npm 到最新版 (确保原生支持 OIDC Trusted Publishing)
+        run: npm install -g npm@latest
+
+      - name: 自动递增版本号 (防止冲突并保证每次更新发布)
+        shell: bash
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          LOCAL_VERSION=$(node -p "require('./package.json').version")
+          REMOTE_VERSION=$(npm view "$PACKAGE_NAME" version 2>/dev/null || echo "")
+          echo "本地版本: $LOCAL_VERSION，npm线上版本: $REMOTE_VERSION"
+          
+          if [ -n "$REMOTE_VERSION" ]; then
+            node -e "
+              const semverLt = (v1, v2) => {
+                const p1 = (v1 || '0').split('.').map(Number);
+                const p2 = (v2 || '0').split('.').map(Number);
+                for (let i = 0; i < 3; i++) {
+                  if ((p1[i] || 0) < (p2[i] || 0)) return true;
+                  if ((p1[i] || 0) > (p2[i] || 0)) return false;
+                }
+                return false;
+              };
+              const local = '$LOCAL_VERSION';
+              const remote = '$REMOTE_VERSION';
+              const fs = require('fs');
+              const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+              if (semverLt(local, remote) || local === remote) {
+                pkg.version = remote;
+                fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+              }
+            "
+            npm version patch --no-git-tag-version
+          else
+            echo "线上无此版本或初次发布，直接使用当前本地版本"
+          fi
+          NEW_VER=$(node -p "require('./package.json').version")
+          echo "最终准备发布版本: $NEW_VER"
+
+      - name: 校验 CLI 语法与基础可用性
+        run: |
+          node ./bin/cli.js --help
+
+      # 1. 发布组织级官方包: @mslteam/mslx-plugin-dev-skill
+      - name: 发布组织级包 @mslteam/mslx-plugin-dev-skill (Trusted Publishing OIDC)
+        run: |
+          npm publish --provenance --access public
+
+      # 2. 发布全局/个人别名包: mslx-plugin-dev-skill
+      - name: 发布全局别名包 mslx-plugin-dev-skill (Trusted Publishing OIDC)
+        run: |
+          node -e "const fs = require('fs'); const p = JSON.parse(fs.readFileSync('package.json', 'utf8')); p.name = 'mslx-plugin-dev-skill'; fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');"
+          npm publish --provenance --access public || echo "mslx-plugin-dev-skill 待配置 Trusted Publisher 后发布"

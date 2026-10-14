@@ -1,0 +1,43 @@
+{
+  "name": "@mslteam/mslx-plugin-dev-skill",
+  "version": "1.0.1",
+  "description": "MSLX 官方全栈插件开发规范与视觉设计系统 Skill（支持双端响应式、design-card 复用与自动化工程体检审计）",
+  "main": "bin/cli.js",
+  "bin": {
+    "mslx-plugin-dev-skill": "bin/cli.js",
+    "mslx-skill": "bin/cli.js"
+  },
+  "files": [
+    "SKILL.md",
+    "README.md",
+    "bin",
+    "references",
+    "examples"
+  ],
+  "keywords": [
+    "mslx",
+    "mslx-plugin",
+    "skills",
+    "agent-skills",
+    "antigravity",
+    "claude-code",
+    "cursor",
+    "vue3",
+    "tdesign",
+    "design-card"
+  ],
+  "author": "MSLTeam <ljy.xiaoyu@qq.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MSLTeam/mslx-plugin-dev-skill.git"
+  },
+  "scripts": {
+    "audit": "node ./bin/cli.js audit",
+    "test": "node ./bin/cli.js --help",
+    "publish:both": "node ./bin/publish-both.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
