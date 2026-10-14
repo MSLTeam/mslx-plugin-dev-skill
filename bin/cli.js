@@ -159,7 +159,7 @@ function handleAudit() {
             file: `${relPath}:${idx + 1}`,
             title: `硬编码纯白背景 (${rule.label})`,
             desc: '检测到硬编码的白底样式，在暗黑模式或用户自定义壁纸毛玻璃下会导致刺眼的视觉断层。',
-            fix: '改用语义变量 bg-[var(--td-bg-color-container)] 并配合 design-card 类继承宿主透明度。'
+            fix: '直接声明 design-card 类由宿主自动注入半透明背景，无需手写背景色；内部嵌套容器可使用 bg-[var(--td-bg-color-secondarycontainer)]。'
           });
         }
       }
@@ -176,7 +176,7 @@ function handleAudit() {
           file: `${relPath}:${idx + 1}`,
           title: `无效 UnoCSS 变量透明度语法 (${m[0]})`,
           desc: 'UnoCSS 不支持在任意 CSS 变量后直接追加斜杠透明度语法，会导致样式规则解析失败并失效。',
-          fix: '直接声明 design-card 类配合 bg-[var(--td-bg-color-container)] 由宿主注入透明度，或使用单独的 opacity 属性。'
+          fix: '直接声明 design-card 类由宿主自动注入透明度与主题底色（无需手写额外 bg 类）。'
         });
       }
     });

@@ -16,9 +16,9 @@ description: >-
 ## 核心开发准则 (Golden Rules)
 
 ### 1. 宿主视觉融入：强制复用 `design-card` 与 TDesign 变量
-* **卡片顶层类名**：所有卡片容器**必须**声明 `class="design-card ..."`。宿主 WebPanel 布局引擎通过 `:deep(.design-card)` 为亮色模式动态注入透明度 `--comp-op-light`、暗色模式注入 `--comp-op-dark`。
+* **卡片顶层类名与自动底色**：所有卡片容器**必须且只需**声明 `class="design-card ..."`。宿主 WebPanel 布局引擎通过 `:deep(.design-card)` 会自动注入动态半透明底色与边框（亮色模式 `--comp-op-light`、暗色模式 `--comp-op-dark`）。**卡片容器本身无需手写任何背景色类（无需写 `bg-white` 或 `bg-[var(...)]`）**。
 * **绝对杜绝硬编码白底**：**严禁**使用 `bg-white`、`#ffffff`、`style="background: white"`！在暗黑模式或用户自定义毛玻璃壁纸下，硬编码白底会导致灾难性的视觉割裂。
-* **统一语义变量**：卡片底色使用 `bg-[var(--td-bg-color-container)]`（或直接声明 `design-card` 继承宿主动态透明度），**严禁使用 UnoCSS 不支持的 `bg-[var(...)]/80` 斜杠透明度写法**；文本使用 `text-[var(--td-text-color-primary)]` 与 `text-[var(--td-text-color-secondary)]`，边框使用 `border-[var(--td-component-border)]`。
+* **统一语义变量**：非卡片类的次级嵌套容器如需跟随主题底色可使用 `bg-[var(--td-bg-color-secondarycontainer)]`，**严禁使用 UnoCSS 不支持的 `bg-[var(...)]/80` 斜杠透明度写法**；文本使用 `text-[var(--td-text-color-primary)]` 与 `text-[var(--td-text-color-secondary)]`，边框使用 `border-[var(--td-component-border)]`。
 * **标准品牌标识条**：模块标题栏左侧统一配置胶囊竖条：
   ```html
   <div class="w-1.5 h-5 bg-[var(--color-primary)] rounded-full shadow-[0_0_8px_var(--color-primary-light)] opacity-90"></div>

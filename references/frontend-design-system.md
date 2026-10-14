@@ -34,14 +34,13 @@ MSLX 允许用户在设置中自定义面板背景壁纸与透明度。在宿主
 
 ```html
 <div
-  class="design-card relative flex flex-col bg-[var(--td-bg-color-container)] rounded-2xl border border-[var(--td-component-border)] shadow-sm transition-all duration-300 p-5 sm:p-6"
+  class="design-card relative flex flex-col rounded-2xl border border-[var(--td-component-border)] shadow-sm transition-all duration-300 p-5 sm:p-6"
 >
   <!-- 卡片内容 -->
 </div>
 ```
 
-* **`design-card`**：允许宿主布局引擎控制毛玻璃与透明度（宿主已自动向其注入亮色 `--comp-op-light` 与暗色 `--comp-op-dark`）。
-* **`bg-[var(--td-bg-color-container)]`**：提供标准语义兜底底色。**注意：UnoCSS 不支持在任意 CSS 变量后添加斜杠透明度（严禁书写 `bg-[var(...)]/80` 等形式，UnoCSS 无法解析该语法会导致样式失效；透明度由 `design-card` 类名由宿主自动注入）**。
+* **`design-card`**：核心基础类名。声明后宿主布局引擎自动注入 `background-color` 与 `border-color`（亮色模式注入 `rgba(255, 255, 255, var(--comp-op-light))`，暗色模式注入 `rgba(20, 20, 20, var(--comp-op-dark))`）。**卡片容器本身无需手写任何背景色类（无需写 `bg-white` 或 `bg-[var(...)]`）**，宿主全局规则已完全接管透明度与自适应深浅色背景。
 * **`rounded-2xl`**：标准 16px 大圆角，符合现代桌面/移动端 UI 趋势。
 * **`border border-[var(--td-component-border)]`**：细腻的语义边框，亮色模式下浅灰，暗色模式下深灰微透。
 * **`shadow-sm hover:shadow-md`**：轻量投影，悬浮增强交互反馈。

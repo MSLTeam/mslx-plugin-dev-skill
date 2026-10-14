@@ -79,9 +79,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- 核心卡片容器：必须使用 design-card 类以继承宿主透明度与主题底色 -->
+  <!-- 核心卡片容器：声明 design-card 类即可自动继承宿主透明度与主题底色，无需手写额外背景色 -->
   <div
-    class="design-card relative flex flex-col bg-[var(--td-bg-color-container)] rounded-2xl border border-[var(--td-component-border)] shadow-sm transition-all duration-300 p-5 sm:p-6"
+    class="design-card relative flex flex-col rounded-2xl border border-[var(--td-component-border)] shadow-sm transition-all duration-300 p-5 sm:p-6"
   >
     <!-- 头部栏：PC 横排 / 手机纵向折叠 -->
     <div
