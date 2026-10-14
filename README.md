@@ -1,7 +1,7 @@
 # MSLX Plugin Dev Skill (`@mslteam/mslx-plugin-dev-skill`)
 
 > **MSLX 官方全栈插件开发规范与视觉设计系统 Skill**  
-> 面向 AI Agent（Codex、Google Antigravity、Cursor、Workbuddy、Trace 等）与开发者的 MSLX 插件全栈开发规范体系，涵盖宿主交互契合度、双端自适应布局、`.design-card` 视觉组件复用及自动化工程自检。
+> 面向 AI Agent（Codex、Google Antigravity、Cursor、Workbuddy、Trae 等）与开发者的 MSLX 插件全栈开发规范体系，涵盖宿主交互契合度、双端自适应布局、`.design-card` 视觉组件复用及自动化工程自检。
 
 ---
 
