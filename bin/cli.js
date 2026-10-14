@@ -159,13 +159,29 @@ function handleAudit() {
             file: `${relPath}:${idx + 1}`,
             title: `硬编码纯白背景 (${rule.label})`,
             desc: '检测到硬编码的白底样式，在暗黑模式或用户自定义壁纸毛玻璃下会导致刺眼的视觉断层。',
-            fix: '改用语义变量 bg-[var(--td-bg-color-container)] 或 bg-[var(--td-bg-color-container)]/80。'
+            fix: '改用语义变量 bg-[var(--td-bg-color-container)] 并配合 design-card 类继承宿主透明度。'
           });
         }
       }
     });
 
-    // 1.3 检查卡片根容器是否使用 design-card
+    // 1.3 检查 UnoCSS 不支持的 CSS 变量斜杠透明度语法 (例如 bg-[var(...)]/80)
+    const varSlashOpacityRegex = /\[var\(--[^\]]+\)\]\/\d+/g;
+    lines.forEach((line, idx) => {
+      if (line.includes('//') || line.includes('/*')) return;
+      varSlashOpacityRegex.lastIndex = 0;
+      let m;
+      while ((m = varSlashOpacityRegex.exec(line)) !== null) {
+        issues.push({
+          file: `${relPath}:${idx + 1}`,
+          title: `无效 UnoCSS 变量透明度语法 (${m[0]})`,
+          desc: 'UnoCSS 不支持在任意 CSS 变量后直接追加斜杠透明度语法，会导致样式规则解析失败并失效。',
+          fix: '直接声明 design-card 类配合 bg-[var(--td-bg-color-container)] 由宿主注入透明度，或使用单独的 opacity 属性。'
+        });
+      }
+    });
+
+    // 1.4 检查卡片根容器是否使用 design-card
     if (content.includes('<template>') && (relPath.includes('views') || relPath.includes('components'))) {
       if (!content.includes('design-card') && !relPath.toLowerCase().includes('icon')) {
         warnings.push({

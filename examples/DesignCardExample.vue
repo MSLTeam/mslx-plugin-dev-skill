@@ -81,7 +81,7 @@ onBeforeUnmount(() => {
 <template>
   <!-- 核心卡片容器：必须使用 design-card 类以继承宿主透明度与主题底色 -->
   <div
-    class="design-card relative flex flex-col bg-[var(--td-bg-color-container)]/80 rounded-2xl border border-[var(--td-component-border)] shadow-sm transition-all duration-300 p-5 sm:p-6"
+    class="design-card relative flex flex-col bg-[var(--td-bg-color-container)] rounded-2xl border border-[var(--td-component-border)] shadow-sm transition-all duration-300 p-5 sm:p-6"
   >
     <!-- 头部栏：PC 横排 / 手机纵向折叠 -->
     <div
@@ -173,7 +173,7 @@ onBeforeUnmount(() => {
           <tr
             v-for="item in filteredList"
             :key="item.id"
-            class="border-b border-[var(--td-component-border)]/60 hover:bg-zinc-500/5 transition-colors"
+            class="border-b border-[var(--td-component-border)] hover:bg-zinc-500/5 transition-colors"
           >
             <td class="p-3 font-medium text-[var(--td-text-color-primary)]">{{ item.name }}</td>
             <td class="p-3 font-mono">{{ item.category }}</td>

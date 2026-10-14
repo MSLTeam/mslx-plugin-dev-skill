@@ -18,7 +18,8 @@ MSLX WebPanel 拥有高度统一的现代毛玻璃与卡片视觉风格。当用
 | 审查项 | 判定标准 | 严重级别 | 常见违规写法 | 正确合规写法 |
 | :--- | :--- | :--- | :--- | :--- |
 | **卡片类名标记** | 独立内容块与视图根容器必须声明 `design-card` 类 | **严重** | `<div class="my-card">` | `<div class="design-card relative flex flex-col ...">` |
-| **背景色透明度** | 严禁硬编码纯白背景 `#fff` / `bg-white`，必须使用变量 | **严重** | `class="bg-white"`<br>`style="background:#fff;"` | `class="bg-[var(--td-bg-color-container)]/80"` |
+| **背景色透明度** | 严禁硬编码纯白背景 `#fff` / `bg-white`，必须使用变量 | **严重** | `class="bg-white"`<br>`style="background:#fff;"` | `class="design-card bg-[var(--td-bg-color-container)]"` |
+| **UnoCSS 变量语法** | 严禁在 CSS 变量后直接追加斜杠透明度（UnoCSS 无法解析该语法） | **严重** | `bg-[var(...)]/80`<br>`border-[var(...)]/60` | 声明 `design-card` 继承宿主透明度，或使用标准语义类 |
 | **标题标杆装饰** | 模块标题栏左侧使用 MSLX 专属品牌胶囊指示条 | **建议** | 自行绘制图标或无修饰纯文本 | `<div class="w-1.5 h-5 bg-[var(--color-primary)] rounded-full shadow-[0_0_8px_var(--color-primary-light)] opacity-90"></div>` |
 | **统一圆角规范** | 主卡片统一使用 `rounded-2xl`，统计小卡片使用 `rounded-xl` | **建议** | `rounded-none`, `rounded-sm` | `rounded-2xl` 或 `rounded-xl` |
 | **主题边框继承** | 使用 TDesign 语义边框或 Zinc 半透明边框 | **建议** | `border-black`, `border-gray-300` | `border border-[var(--td-component-border)]` |
