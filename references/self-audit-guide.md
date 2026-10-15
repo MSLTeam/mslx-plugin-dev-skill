@@ -17,7 +17,7 @@ MSLX WebPanel 拥有高度统一的现代毛玻璃与卡片视觉风格。当用
 ### 1.1 审查清单
 | 审查项 | 判定标准 | 严重级别 | 常见违规写法 | 正确合规写法 |
 | :--- | :--- | :--- | :--- | :--- |
-| **卡片类名标记** | 独立内容块与视图根容器必须声明 `design-card` 类 | **严重** | `<div class="my-card">` | `<div class="design-card relative flex flex-col ...">` |
+| **卡片类名标记** | 独立页面与大卡片插槽根容器必须声明 `design-card`；模态框 (`<t-dialog>`) 与内嵌 Tab 容器豁免并遵循各自形态 | **严重** | `<div class="my-card">`（页面级）<br>或在 `<t-dialog>` 外再硬套 `design-card` | 页面级：`<div class="design-card relative flex flex-col ...">`<br>弹窗级：直接以 `<t-dialog>` 为根 |
 | **卡片背景色** | 卡片只需声明 `design-card` 类，宿主会自动注入半透明主题背景，严禁硬编码纯白背景 | **严重** | `class="bg-white"`<br>`style="background:#fff;"` | `class="design-card ..."`（无需写额外 bg 类） |
 | **UnoCSS 变量语法** | 严禁在 CSS 变量后直接追加斜杠透明度（UnoCSS 无法解析该语法） | **严重** | `bg-[var(...)]/80`<br>`border-[var(...)]/60` | 声明 `design-card` 继承宿主透明度，或使用标准语义类 |
 | **标题标杆装饰** | 模块标题栏左侧使用 MSLX 专属品牌胶囊指示条 | **建议** | 自行绘制图标或无修饰纯文本 | `<div class="w-1.5 h-5 bg-[var(--color-primary)] rounded-full shadow-[0_0_8px_var(--color-primary-light)] opacity-90"></div>` |
@@ -128,9 +128,11 @@ MSLX WebPanel 拥有高度统一的现代毛玻璃与卡片视觉风格。当用
   - 严禁在事件回调函数内执行同步等待（`Thread.Sleep`、耗时压缩、同步网络请求）。
   - **必须全部包裹在 `Task.Run(async () => { ... })` 中执行**，确保即使插件执行耗时较长的 IO 或网络任务，宿主主线程依然保持即时响应与流畅运行。
 
-### 5.2 程序集扫描与单文件合并
+### 5.2 程序集扫描、嵌入清单与单文件合并
 * **审查标准**：
   - 入口文件顶部必须声明 `[assembly: ApplicationPart("程序集名称")]`，否则宿主无法反射发现插件的 Controller，导致所有 API 报 404。
+  - `.csproj` 必须配置 `<GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>`，且引用 `MSLX.SDK` 时必须声明 `ExcludeAssets="runtime"`。
+  - `Frontend/vite.config.ts` 必须配置 `cssInjectedByJsPlugin()`，并将构建输出文件名固定为 `mslx-plugin-entry.js`。
   - 发布构建必须使用 `dotnet build -c Release`，验证 `ILRepack` 是否成功将第三方 DLL 合并到单个插件 DLL 中，前端 `Frontend/dist` 是否作为嵌入式资源打入。
 
 ---

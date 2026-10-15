@@ -1,7 +1,7 @@
 ---
 name: mslx-plugin-dev
 description: >-
-  Comprehensive guide and rules for MSLX plugin full-stack development (.NET 8/9 C# backend + Vue 3/TDesign/UnoCSS frontend).
+  Comprehensive guide and rules for MSLX plugin full-stack development (.NET 10 C# backend + Vue 3/TDesign/UnoCSS frontend).
   Mandatory whenever developing, designing, refactoring, or auditing MSLX plugins.
   Enforces strict reuse of the design-card visual system, dark mode & host theme opacity inheritance,
   responsive PC & mobile UX adaptation, zero-conflict CSS isolation, SDK event loop async safety, and security audits.
@@ -15,11 +15,20 @@ description: >-
 
 ## 核心开发准则 (Golden Rules)
 
-### 1. 宿主视觉融入：强制复用 `design-card` 与 TDesign 变量
-* **卡片顶层类名与自动底色**：所有卡片容器**必须且只需**声明 `class="design-card ..."`。宿主 WebPanel 布局引擎通过 `:deep(.design-card)` 会自动注入动态半透明底色与边框（亮色模式 `--comp-op-light`、暗色模式 `--comp-op-dark`）。**卡片容器本身无需手写任何背景色类（无需写 `bg-white` 或 `bg-[var(...)]`）**。
+### 1. 宿主视觉融入：分场景排版与 TDesign 语义变量
+MSLX 插件界面根据挂载场景分为**三大形态**，严禁混淆：
+* **形态 A：独立页面与卡片插槽 (Card Views)**
+  * 适用场景：单页路由（`/mslx-plugin-xxx`）、仪表盘插槽（`dashboard-index-after-system-status`）、设置页底部插槽（`settings-*-bottom`）。
+  * **规范**：顶层容器**必须且只需**声明 `class="design-card relative flex flex-col rounded-2xl border border-[var(--td-component-border)] shadow-sm p-5 sm:p-6"`。宿主 WebPanel 布局引擎通过 `:deep(.design-card)` 会自动注入动态半透明底色与边框（亮色模式 `--comp-op-light`、暗色模式 `--comp-op-dark`）。**卡片容器本身无需手写任何背景色类（无需写 `bg-white` 或 `bg-[var(...)]`）**。
+* **形态 B：弹窗与模态框 (Modal / Dialogs)**
+  * 适用场景：控制台下拉弹窗（`instance-console-dropdown`）及页面内弹窗。
+  * **规范**：以 `<t-dialog>` 为根容器，**严禁在弹窗外层包裹 `design-card`**；必须声明 `attach="body"`（防止被父级截断），宽度使用自适应 `width="min(580px, 92vw)"`。
+* **形态 C：宿主选项卡面板 (Settings Tabs)**
+  * 适用场景：实例设置侧边栏选项卡（`instance-settings-tab`）、穿透服务商切换页（`frp-create-provider`）。
+  * **规范**：宿主弹窗内部已有统一背景和内边距，面板顶层容器使用扁平流式容器 `<div class="flex flex-col mx-auto w-full pb-8">`，**严禁外层嵌套 `design-card`**；使用小节标题条排版。
 * **绝对杜绝硬编码白底**：**严禁**使用 `bg-white`、`#ffffff`、`style="background: white"`！在暗黑模式或用户自定义毛玻璃壁纸下，硬编码白底会导致灾难性的视觉割裂。
-* **统一语义变量**：非卡片类的次级嵌套容器如需跟随主题底色可使用 `bg-[var(--td-bg-color-secondarycontainer)]`，**严禁使用 UnoCSS 不支持的 `bg-[var(...)]/80` 斜杠透明度写法**；文本使用 `text-[var(--td-text-color-primary)]` 与 `text-[var(--td-text-color-secondary)]`，边框使用 `border-[var(--td-component-border)]`。
-* **标准品牌标识条**：模块标题栏左侧统一配置胶囊竖条：
+* **统一语义变量**：次级嵌套容器可使用 `bg-[var(--td-bg-color-secondarycontainer)]`，**严禁使用 UnoCSS 不支持的 `bg-[var(...)]/80` 斜杠透明度写法**；文本使用 `text-[var(--td-text-color-primary)]` 与 `text-[var(--td-text-color-secondary)]`，边框使用 `border-[var(--td-component-border)]`。
+* **标准品牌标识条**：模块与小节标题栏左侧统一配置胶囊竖条：
   ```html
   <div class="w-1.5 h-5 bg-[var(--color-primary)] rounded-full shadow-[0_0_8px_var(--color-primary-light)] opacity-90"></div>
   ```
@@ -27,17 +36,19 @@ description: >-
 ### 2. 双端体验自适应：必须兼顾 PC 宽屏与手机端
 * **头部栏自适应折叠**：头部操作区必须使用 `flex-col sm:flex-row sm:items-center justify-between gap-4`。移动端纵向堆叠，PC 端横向对齐。
 * **表格防爆容器**：数据表格外层**必须**包裹 `<div class="overflow-x-auto">`，避免在手机屏幕上强行撑宽整个页面。
-* **弹窗穿透与响应式宽度**：使用 `<t-dialog>` 必须配置 `attach="body"`（防止被父级卡片的 `overflow-hidden` 截断），且弹窗宽度必须响应式设置 `width="min(580px, 92vw)"`。
+* **弹窗穿透与响应式宽度**：使用 `<t-dialog>` 必须配置 `attach="body"`，且弹窗宽度必须响应式设置 `width="min(580px, 92vw)"`。
 
-### 3. 样式零污染与无冲突设计
+### 3. 样式零污染与无冲突打包
 * **Vue 样式强隔离**：组件所有 `<style>` **必须且只能**为 `<style scoped>`，严禁书写未隔离的全局选择器。
 * **UnoCSS 安全预设**：`uno.config.ts` 中必须设置 `presetUno({ preflight: false })`，禁止开启预设 reset 污染宿主基础排版；`vite.config.ts` 必须配置 `UnoCSS({ mode: 'vue-scoped' })`。
+* **CSS 注入与单文件打包**：`vite.config.ts` 必须配置 `vite-plugin-css-injected-by-js`（宿主仅加载 JS 文件），并且 `build.lib.fileName` 必须固定返回 `'mslx-plugin-entry.js'`。
 * **路由命名唯一性**：路由 `name` 和 `path` 必须附带插件前缀（如 `name: 'MslxPluginDemoPage'`），避免覆盖宿主路由。
 * **生命周期清理**：前端 `addEventListener` 与 `setInterval` 必须在 `onBeforeUnmount` 中注销；后端 C# 必须在 `OnUnload` 中释放资源。
 
-### 4. SDK 事件循环防阻塞与跨插件解耦
+### 4. SDK 事件循环防阻塞、HTTP 与多插件联动
 * **事件异步化**：监听 `SDK.MSLX.Events`（如 `OnBackupCompleted`, `OnServerStarted`）时，事件处理器是在宿主主线程中同步调用的。**任何耗时 IO、文件压缩或网络请求必须使用 `Task.Run(async () => { ... })` 执行**，绝不允许阻塞宿主！
-* **零耦合配置联动**：需要检测其他插件时，使用 `SDK.MSLX.Config.GetPluginConfig("目标插件Id")` 动态读取配置，严禁强引用未发布的 DLL。
+* **统一 HTTP 与工具库**：插件发起 HTTP 请求应优先复用轻量的 `SDK.MSLX.Http.GetAsync/PostAsync`，文件下载复用 `SDK.MSLX.Downloader.DownloadFileAsync`。
+* **宿主配置桥接**：利用 `SDK.MSLX.Config` 提供的强类型桥梁（`Servers` 服务器列表、`Main` 主配置、`Frp` 穿透、`Tasks` 任务、`Users` 用户鉴权）与 `GetPluginConfig("目标插件Id")`，实现与宿主和其他插件的解耦联动。
 
 ### 5. 路径穿越与安全防线
 * **数据目录沙箱**：插件文件 IO 必须以 `this.Config().GetDataPath()` 为唯一合法沙箱根目录。
@@ -53,7 +64,7 @@ description: >-
 # 1. 安装官方 .NET 插件脚手架模板
 dotnet new install MSLX.Plugin.Templates
 
-# 2. 创建插件工程
+# 2. 创建插件工程 (.NET 10)
 dotnet new mslx-plugin -n MSLX.Plugin.MyDemo --plugin-id mslx-plugin-demo --plugin-name "示例插件" --plugin-author "开发者名称"
 
 # 3. 前端热重载调试 (在插件 Frontend 目录下)
@@ -79,11 +90,11 @@ npx @mslteam/mslx-plugin-dev-skill audit
 
 根据具体开发任务，查阅对应的参考规范：
 
-* **视觉规范与 design-card 深度解析**：查阅 [frontend-design-system.md](./references/frontend-design-system.md)
-* **前端路由、9 大扩展插槽与 Host API**：查阅 [frontend-integration.md](./references/frontend-integration.md)
-* **后端生命周期、事件总线与全局任务池**：查阅 [backend-architecture.md](./references/backend-architecture.md)
+* **视觉规范与 3 大布局形态**：查阅 [frontend-design-system.md](./references/frontend-design-system.md)
+* **前端路由、9 大扩展插槽、宿主 Store 与 useFileUpload**：查阅 [frontend-integration.md](./references/frontend-integration.md)
+* **后端架构、SDK 核心桥接、事件总线与后台任务池**：查阅 [backend-architecture.md](./references/backend-architecture.md)
 * **全方位自我审查指南与合规打分表**：查阅 [self-audit-guide.md](./references/self-audit-guide.md)
-* **脚手架、ILRepack 单文件打包与发布流程**：查阅 [project-scaffold-publish.md](./references/project-scaffold-publish.md)
+* **.NET 10 脚手架、单文件打包与发布流程**：查阅 [project-scaffold-publish.md](./references/project-scaffold-publish.md)
 
 ---
 
@@ -92,7 +103,7 @@ npx @mslteam/mslx-plugin-dev-skill audit
 * **前端标杆 Vue 3 组件**：[examples/DesignCardExample.vue](./examples/DesignCardExample.vue)
   * 内置完整 `design-card`、自适应头部（PC 横排 / 手机纵折叠）、2/4 列统计磁贴、过滤工具栏、数据卡片流与暗黑模式适配。
 * **前端标杆注册入口**：[examples/pluginEntry.ts](./examples/pluginEntry.ts)
-  * 包含单页路由、宿主一级菜单注入与实例控制台扩展插槽。
+  * 包含 `name`、`version` 元数据、单页路由、宿主一级菜单注入与实例控制台扩展插槽。
 * **后端标杆 C# 入口**：[examples/MSLXPluginEntry.cs](./examples/MSLXPluginEntry.cs)
   * 包含 `ApplicationPart` 特性、DI 服务注册、安全数据目录初始化以及事件监听异步化范式。
 
@@ -102,9 +113,10 @@ npx @mslteam/mslx-plugin-dev-skill audit
 
 在提交插件或完成开发前，逐项核对：
 - [ ] 运行 `npx @mslteam/mslx-plugin-dev-skill audit` 并确保 **0 个严重违规**。
-- [ ] 根容器是否使用了 `design-card`，并在暗黑模式和白昼模式下分别验证过。
+- [ ] 视图场景是否正确选择形态（独立卡片声明 `design-card`，模态框使用 `<t-dialog attach="body">`，Tab 面板扁平流式）。
 - [ ] 在 375px（手机宽度）与 1440px（PC 桌面）视口下分别检查了界面折叠与排版。
 - [ ] 表格外部包裹了 `overflow-x-auto`，弹窗添加了 `attach="body"`。
 - [ ] 所有的 `<style>` 标签都带上了 `scoped` 限制。
+- [ ] 前端构建配置包含 `vite-plugin-css-injected-by-js` 且产物固定为 `mslx-plugin-entry.js`。
 - [ ] C# 文件读写均在 `this.Config().GetDataPath()` 沙箱内，无路径穿越漏洞。
 - [ ] 事件处理器均使用 `Task.Run` 异步化，未阻塞宿主主执行流。

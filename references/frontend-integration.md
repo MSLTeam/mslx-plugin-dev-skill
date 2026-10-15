@@ -16,6 +16,8 @@ import InstanceSettingsTab from './views/InstanceSettingsTab.vue';
 import { GitBranchIcon, SettingIcon } from 'tdesign-icons-vue-next';
 
 export const pluginConfig: PluginConfig = {
+  name: 'MSLX.Plugin.MyAwesome',
+  version: '1.0.0',
   routes: [ /* 路由配置 */ ],
   extensions: [ /* 插槽配置 */ ]
 };
@@ -119,7 +121,21 @@ defineExpose({
 
 ## 4. 宿主状态透传 (MSLX_Stores)
 
-宿主将全部 Pinia Store 挂载在全局 `window.MSLX_Stores` 对象上：
+宿主将全部 Pinia Store 挂载在全局 `window.MSLX_Stores` 对象上，插件可随时读取或调用：
+
+### 宿主 9 大 Pinia Store 完整清单
+
+| Store 模块 | 导出函数 / Hook | 常用状态与核心方法 |
+| :--- | :--- | :--- |
+| **user** | `getUserStore()`, `useUserStore()` | `userInfo`（用户名、角色、系统信息）、`token`、`baseUrl`、`isAdmin` |
+| **setting** | `getSettingStore()`, `useSettingStore()` | `mode` ('light' \| 'dark' \| 'auto')、`brandTheme` 主题色、`changeMode()` |
+| **permission** | `getPermissionStore()`, `usePermissionStore()` | `routers` 动态路由清单、`whiteListRouters` |
+| **instance** | `useInstanceListStore()` | `instanceList` 实例数组、`totalInstanceCount`、`refreshInstanceList()` |
+| **node** | `useNodeStore()` | `slaveNodes` 子节点清单、`activeNodeId` 当前激活节点、`setActiveNode()` |
+| **frp** | `useTunnelsStore()` | `frpList` 隧道列表、`getTunnels()` 刷新数据 |
+| **pluginUI** | `usePluginUIStore()` | `extensions` 插槽注册表、`registerExtension()` |
+| **webpanel** | `useWebpanelStore()` | 面板样式配置（背景透明度、模糊度）、`uploadImage(file)` |
+| **update** | `useUpdateStore()` | `updateInfo` 最新版本信息、`checkAppUpdate()` |
 
 ```ts
 import { computed } from 'vue';
@@ -136,7 +152,11 @@ const instanceStore = stores?.useInstanceListStore?.();
 await instanceStore?.refreshInstanceList();
 console.log('所有实例:', instanceStore?.instanceList);
 
-// 3. 监听主题与颜色模式
+// 3. 读取当前子节点
+const nodeStore = stores?.useNodeStore?.();
+console.log('当前激活子节点:', nodeStore?.activeNodeId);
+
+// 4. 监听主题与颜色模式
 const settingStore = stores?.getSettingStore?.() || stores?.useSettingStore?.();
 const isDarkMode = computed(() => settingStore?.mode === 'dark');
 ```
@@ -171,14 +191,63 @@ const fetchBackups = async () => {
   }
 };
 
-// 2. 发起 POST 请求（支持子节点路由与自动重试）
+// 2. 发起 POST 请求（支持显式指定子节点路由）
 const saveConfig = async (payload: any) => {
   await request.post({
     url: '/api/plugins/mslx-plugin-cloud-backup/config',
     data: payload
   }, {
-    requestToSlaveNode: 'auto', // 自动通过路径路由至当前激活的子节点
-    retry: { count: 3, delay: 1000 } // 失败自动重试 3 次
+    // 关键参数：若请求需定向到当前激活的分布式子节点，显式声明 true
+    // 若请求宿主主守护进程，声明 false 或留空
+    requestToSlaveNode: true
   });
 };
+```
+
+---
+
+## 6. 宿主大文件分片上传工具 (`window.useFileUpload`)
+
+若插件涉及上传大文件（如备份包、整合包、模组或自定义核心），可直接复用宿主全局暴露的 `useFileUpload` Hook，具备自动分片、动态并发、指数退避重试与实时进度追踪能力：
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+import { MessagePlugin } from 'tdesign-vue-next';
+
+// 从全局 window 获取上传 Hook
+const useUploadHook = (window as any).useFileUpload;
+const {
+  isUploading,
+  uploadProgress,
+  uploadedFileName,
+  uploadedFileSize,
+  startUpload
+} = useUploadHook ? useUploadHook() : { isUploading: ref(false), uploadProgress: ref(0), startUpload: async () => '' };
+
+const handleFileChange = async (e: Event) => {
+  const target = e.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  try {
+    // startUpload 自动处理切片、计算并发与进度，完成后返回文件 Key
+    const fileKey = await startUpload(file);
+    MessagePlugin.success(`上传成功，文件存储 Key: ${fileKey}`);
+  } catch (err: any) {
+    MessagePlugin.error(`上传失败: ${err.message || err}`);
+  }
+};
+</script>
+
+<template>
+  <div v-if="isUploading" class="flex flex-col gap-2 my-2">
+    <div class="flex justify-between text-xs text-[var(--td-text-color-secondary)]">
+      <span>正在上传: {{ uploadedFileName }} ({{ uploadedFileSize }})</span>
+      <span>{{ uploadProgress }}%</span>
+    </div>
+    <t-progress :percentage="uploadProgress" theme="circle" :stroke-width="4" />
+  </div>
+  <input v-else type="file" @change="handleFileChange" />
+</template>
 ```

@@ -4,7 +4,12 @@
 import { AppIcon, SettingIcon, GitBranchIcon } from 'tdesign-icons-vue-next';
 import DesignCardExample from './DesignCardExample.vue';
 
+import './style.css';
+
 export const pluginConfig = {
+  name: 'MSLX.Plugin.Awesome',
+  version: '1.0.0',
+
   // 1. 路由注册清单
   routes: [
     // 注册独立一级单页

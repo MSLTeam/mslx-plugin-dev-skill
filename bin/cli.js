@@ -118,6 +118,7 @@ function handleAudit() {
   const csFiles = findFiles(cwd, ['.cs']);
   const unoFiles = findFiles(cwd, ['.ts', '.js']).filter(f => f.includes('uno.config'));
   const viteFiles = findFiles(cwd, ['.ts', '.js']).filter(f => f.includes('vite.config'));
+  const csprojFiles = findFiles(cwd, ['.csproj']);
 
   const issues = [];
   const warnings = [];
@@ -181,19 +182,22 @@ function handleAudit() {
       }
     });
 
-    // 1.4 检查卡片根容器是否使用 design-card
+    // 1.4 检查卡片根容器是否使用 design-card (智能跳过模态框和选项卡面板)
     if (content.includes('<template>') && (relPath.includes('views') || relPath.includes('components'))) {
-      if (!content.includes('design-card') && !relPath.toLowerCase().includes('icon')) {
+      const isModal = /<t-dialog\b/i.test(content) || /Modal\.vue$/i.test(relPath) || /Dialog\.vue$/i.test(relPath) || /Dropdown.*\.vue$/i.test(relPath);
+      const isTabOrPanel = /Tab\.vue$/i.test(relPath) || /Provider\.vue$/i.test(relPath);
+
+      if (!isModal && !isTabOrPanel && !content.includes('design-card') && !relPath.toLowerCase().includes('icon')) {
         warnings.push({
           file: relPath,
           title: '未继承 design-card 样式',
-          desc: '组件根容器未包含 design-card 类名，宿主将无法向其注入全局透明度 (--comp-op-light/dark)。',
+          desc: '独立卡片或页面根容器未包含 design-card 类名，宿主将无法向其注入全局透明度 (--comp-op-light/dark)。',
           fix: '在卡片根容器增加 class="design-card ..."'
         });
       }
     }
 
-    // 1.4 检查 t-dialog 是否加 attach="body"
+    // 1.5 检查 t-dialog 是否加 attach="body"
     if (content.includes('<t-dialog') && !content.includes('attach="body"')) {
       issues.push({
         file: relPath,
@@ -203,7 +207,7 @@ function handleAudit() {
       });
     }
 
-    // 1.5 检查 v-html 潜在 XSS
+    // 1.6 检查 v-html 潜在 XSS
     if (content.includes('v-html=')) {
       warnings.push({
         file: relPath,
@@ -213,7 +217,7 @@ function handleAudit() {
       });
     }
 
-    // 1.6 检查生命周期清理 (addEventListener / setInterval)
+    // 1.7 检查生命周期清理 (addEventListener / setInterval)
     const hasAddListener = content.includes('addEventListener') || content.includes('setInterval');
     const hasRemove = content.includes('removeEventListener') || content.includes('clearInterval');
     if (hasAddListener && !hasRemove) {
@@ -240,7 +244,55 @@ function handleAudit() {
     }
   }
 
-  // 3. 审查 C# 后端
+  // 3. 审查 Vite 前端构建配置
+  for (const file of viteFiles) {
+    const relPath = path.relative(cwd, file);
+    const content = fs.readFileSync(file, 'utf-8');
+
+    if (!content.includes('cssInjectedByJsPlugin') && !content.includes('vite-plugin-css-injected-by-js')) {
+      issues.push({
+        file: relPath,
+        title: '缺少 CSS 注入插件 (cssInjectedByJsPlugin)',
+        desc: '宿主微前端仅动态加载 mslx-plugin-entry.js 单一脚本，若缺少 vite-plugin-css-injected-by-js，组件样式将无法注入宿主 DOM。',
+        fix: '在 vite.config.ts 中引入并配置 cssInjectedByJsPlugin()。'
+      });
+    }
+
+    if (!content.includes('mslx-plugin-entry.js')) {
+      issues.push({
+        file: relPath,
+        title: '构建入口产物文件名不符合规范',
+        desc: "build.lib.fileName 必须配置为固定生成 'mslx-plugin-entry.js'，否则宿主微前端加载器将因文件名不一致报 404。",
+        fix: "在 vite.config.ts 的 build.lib 中配置 fileName: () => 'mslx-plugin-entry.js'"
+      });
+    }
+  }
+
+  // 4. 审查 C# 工程文件 (.csproj)
+  for (const file of csprojFiles) {
+    const relPath = path.relative(cwd, file);
+    const content = fs.readFileSync(file, 'utf-8');
+
+    if (!content.includes('<GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>')) {
+      issues.push({
+        file: relPath,
+        title: '缺少嵌入式清单生成配置 (GenerateEmbeddedFilesManifest)',
+        desc: '未开启 GenerateEmbeddedFilesManifest，宿主底层 ManifestEmbeddedFileProvider 将无法在运行时定位并解包前端静态文件。',
+        fix: '在 <PropertyGroup> 中添加 <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>'
+      });
+    }
+
+    if (content.includes('Include="MSLX.SDK"') && !content.includes('ExcludeAssets="runtime"')) {
+      warnings.push({
+        file: relPath,
+        title: 'MSLX.SDK 缺少 ExcludeAssets="runtime" 约束',
+        desc: '未设置 ExcludeAssets="runtime" 会导致宿主核心 SDK 被 ILRepack 重复合并进单文件插件 DLL，可能引发类型混淆或加载异常。',
+        fix: '在 PackageReference Include="MSLX.SDK" 标签中添加 ExcludeAssets="runtime"'
+      });
+    }
+  }
+
+  // 5. 审查 C# 后端代码
   let hasApplicationPart = false;
   for (const file of csFiles) {
     const relPath = path.relative(cwd, file);
@@ -299,9 +351,9 @@ function handleAudit() {
     });
   }
 
-  // 4. 汇总与输出报告
+  // 6. 汇总与输出报告
   console.log(`${c.bold}------------------- 审查报告 -------------------${c.reset}`);
-  console.log(`扫描文件清单: ${vueFiles.length} 个 Vue 组件, ${csFiles.length} 个 C# 源文件\n`);
+  console.log(`扫描文件清单: ${vueFiles.length} 个 Vue 组件, ${csFiles.length} 个 C# 源文件, ${csprojFiles.length} 个工程配置, ${viteFiles.length} 个 Vite 配置\n`);
 
   if (issues.length === 0 && warnings.length === 0) {
     console.log(`${c.bgGreen}${c.bold} PASS ${c.reset} ${c.green}${c.bold}所有检查项均已通过，插件完全符合 MSLX 宿主设计与安全规范。${c.reset}\n`);

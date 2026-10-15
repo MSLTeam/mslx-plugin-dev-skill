@@ -45,6 +45,59 @@ MSLX 允许用户在设置中自定义面板背景壁纸与透明度。在宿主
 * **`border border-[var(--td-component-border)]`**：细腻的语义边框，亮色模式下浅灰，暗色模式下深灰微透。
 * **`shadow-sm hover:shadow-md`**：轻量投影，悬浮增强交互反馈。
 
+### 1.3 三大挂载场景形态规范 (Three Layout Archetypes)
+在 MSLX 插件开发中，组件根据挂载位置分为三种标准形态，开发者与 AI 必须严格区分，严禁混用：
+
+#### 场景 A：独立页面卡片与大卡片插槽 (Card Views)
+* **适用插槽/页面**：单页路由（如 `/mslx-plugin-cloud-backup`）、`dashboard-index-after-system-status`、`settings-profile-bottom`、`settings-daemon-bottom`。
+* **结构规范**：根节点必须为 `design-card`。
+```html
+<template>
+  <div class="design-card relative flex flex-col rounded-2xl border border-[var(--td-component-border)] shadow-sm p-5 sm:p-6">
+    <!-- 卡片头部与内容 -->
+  </div>
+</template>
+```
+
+#### 场景 B：弹窗与模态框组件 (Modals & Dialogs)
+* **适用插槽/页面**：`instance-console-dropdown` 弹出的模态框、页面内的设置/编辑 Dialog。
+* **结构规范**：根节点直接为 `<t-dialog>`，**绝对不要在外面套一层 `design-card`**（TDesign 弹窗自身拥有独立的阴影与遮罩系统，强套卡片会导致内边距重复和圆角被截断）。
+```html
+<template>
+  <t-dialog
+    attach="body"
+    v-model:visible="visible"
+    header="存储策略配置"
+    width="min(580px, 92vw)"
+    :confirm-btn="{ content: '保存', theme: 'primary' }"
+    @confirm="handleSave"
+  >
+    <div class="py-2 flex flex-col gap-4 text-xs text-[var(--td-text-color-secondary)]">
+      <!-- 弹窗表单内容 -->
+    </div>
+  </t-dialog>
+</template>
+```
+
+#### 场景 C：宿主选项卡面板 (Settings Tabs)
+* **适用插槽/页面**：`instance-settings-tab`（实例设置侧边栏扩展 Tab）、`frp-create-provider`（创建隧道切换卡）。
+* **结构规范**：由于宿主在打开实例配置时已经是一个全屏或大尺寸的 `<t-dialog>` 弹窗，Tab 内容区域自带了灰色磨砂背景与内边距。因此 Tab 组件**必须采用扁平流式布局**，**严禁使用 `design-card`**（避免“弹窗里面套大卡片”的突兀层级）。应使用与宿主原生一致的小节标题排版：
+```html
+<template>
+  <div class="flex flex-col mx-auto w-full pb-8">
+    <!-- 小节标题条 (匹配宿主原生风格) -->
+    <div class="flex items-center gap-2 mt-2 mb-4 pb-2 border-b border-zinc-200/60 dark:border-zinc-700/60">
+      <div class="w-1 h-4 bg-[var(--color-primary)] rounded-full"></div>
+      <h2 class="text-base font-bold text-[var(--td-text-color-primary)] m-0 flex items-center">
+        云端同步策略
+      </h2>
+    </div>
+
+    <!-- 表单与设置内容 -->
+  </div>
+</template>
+```
+
 ---
 
 ## 2. PC 端与移动端双端自适应规范

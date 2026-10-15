@@ -196,16 +196,83 @@ if (gfsBridge != null)
 
 ---
 
-## 6. 核心工具与路径沙箱
+## 6. HTTP 网络客户端 (`SDK.MSLX.Http`)
 
-* **获取插件独立数据目录**：`string dir = this.Config().GetDataPath();`
-* **获取宿主主配置文件目录**：`string appConfig = SDK.MSLX.Config.GetAppConfigPath();`
+插件无需自行引入 `HttpClient` 或第三方库，SDK 提供了轻量且自动管理连接池的 HTTP 客户端：
+
+```csharp
+// 1. GET 请求
+var getRes = await SDK.MSLX.Http.GetAsync("https://api.mslmc.cn/v3/query/notice");
+if (getRes.IsSuccessStatusCode)
+{
+    SDK.MSLX.Logger.Info($"收到响应: {getRes.Content}");
+}
+
+// 2. POST 请求 (支持 Json / FormUrlEncoded / Text / Octet)
+var postRes = await SDK.MSLX.Http.PostAsync(
+    "https://api.example.com/webhook",
+    PluginHttpContentType.Json,
+    new { serverId = 1, status = "running" },
+    headers: new Dictionary<string, string> { { "Authorization", "Bearer xxx" } },
+    timeout: TimeSpan.FromSeconds(10)
+);
+```
+
+---
+
+## 7. 宿主核心配置桥接 (`SDK.MSLX.Config`)
+
+通过 `SDK.MSLX.Config`，插件可直接读取或联动宿主的核心业务数据，无需自行读写 JSON 文件：
+
+```csharp
+// 1. 服务器实例列表 (Servers)
+var serverList = SDK.MSLX.Config.Servers.GetServerList();
+var specificServer = SDK.MSLX.Config.Servers.GetServer(serverId: 1);
+
+// 2. 宿主主配置 (Main)
+var mainObj = SDK.MSLX.Config.Main.ReadConfig();
+var apiPort = SDK.MSLX.Config.Main.ReadConfigKey("Port");
+
+// 3. FRP 穿透列表 (Frp)
+var tunnels = SDK.MSLX.Config.Frp.GetFrpList();
+
+// 4. 定时计划任务 (Tasks)
+var tasks = SDK.MSLX.Config.Tasks.GetTasksByInstanceId(instanceId: 1);
+
+// 5. 用户与权限查询 (Users)
+var users = SDK.MSLX.Config.Users.GetAllUsers();
+bool hasPerm = SDK.MSLX.Config.Users.HasResourcePermission(userId, "server", 1);
+
+// 6. 全局 AppData 路径与独立数据目录
+string appDataDir = SDK.MSLX.Config.GetAppDataPath();
+string myPluginDir = this.Config().GetDataPath();
+```
+
+---
+
+## 8. 端点安全与 Minimal API 降权访问 (`AllowTokenScope`)
+
+在 `OnRegisterEndpoints` 注册自定义路由端点时，可配合 `AllowTokenScope` 声明细粒度的 Token 权限范围：
+
+```csharp
+public void OnRegisterEndpoints(IEndpointRouteBuilder endpoints)
+{
+    // 限制仅具有 'server:read' 权限范围的 Token 访问该端点
+    endpoints.MapGet("/api/plugins/mslx-plugin-my-awesome/ping", () => "pong")
+             .AllowTokenScope("server:read");
+}
+```
+
+---
+
+## 9. 核心工具与文件下载
+
 * **文件下载管理器**：
   ```csharp
-  var res = await SDK.MSLX.Downloader.DownloadFileAsync(
+  var (success, errorMsg) = await SDK.MSLX.Downloader.DownloadFileAsync(
       url, 
       targetPath, 
-      (progress, speed) => SDK.MSLX.Logger.Debug($"下载进度: {progress}% [{speed}]")
+      (progress, speed) => SDK.MSLX.Logger.Debug($"下载进度: {progress:F1}% [{speed}]")
   );
   ```
-* **统一日志输出**：`SDK.MSLX.Logger.Info(...)` / `Warn(...)` / `Error(...)`
+* **统一日志输出**：`SDK.MSLX.Logger.Info(...)` / `Warn(...)` / `Error(...)` / `Debug(...)`
