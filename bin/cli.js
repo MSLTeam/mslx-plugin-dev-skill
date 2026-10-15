@@ -60,8 +60,12 @@ function printInfo() {
   const pkg = require(path.join(SKILL_ROOT, 'package.json'));
   console.log(`
 ${c.bold}包名:${c.reset} ${pkg.name} (v${pkg.version})
-${c.bold}描述:${c.reset} ${pkg.description}
-${c.bold}规范文档库:${c.reset}
+${c.bold}官方实时在线源 (接口与 SDK 优先以在线文档为准):${c.reset}
+  - 核心文档索引: ${c.green}https://mslx.mslmc.cn/llms.txt${c.reset}
+  - 全量开发文档: ${c.green}https://mslx.mslmc.cn/llms-full.txt${c.reset}
+  - 官方在线手册: ${c.green}https://mslx.mslmc.cn/plugin-dev/${c.reset}
+
+${c.bold}本地规范文档库:${c.reset}
   - 核心指令: ${c.cyan}SKILL.md${c.reset}
   - 视觉设计系统: ${c.cyan}references/frontend-design-system.md${c.reset}
   - 宿主与插槽集成: ${c.cyan}references/frontend-integration.md${c.reset}

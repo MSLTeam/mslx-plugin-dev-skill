@@ -3,17 +3,30 @@ name: mslx-plugin-dev
 description: >-
   Comprehensive guide and rules for MSLX plugin full-stack development (.NET 10 C# backend + Vue 3/TDesign/UnoCSS frontend).
   Mandatory whenever developing, designing, refactoring, or auditing MSLX plugins.
+  Prioritizes official live documentation (https://mslx.mslmc.cn/llms.txt & llms-full.txt) for all host APIs and SDK methods.
   Enforces strict reuse of the design-card visual system, dark mode & host theme opacity inheritance,
   responsive PC & mobile UX adaptation, zero-conflict CSS isolation, SDK event loop async safety, and security audits.
 ---
 
 # MSLX 插件全栈开发与前端视觉规范 Skill
 
-本指南是 MSLX 插件开发的**唯一权威指导规范**。作为 AI Agent 或开发者，当编写、修改、重构或审查 MSLX 插件时，**必须严格遵循以下铁律与设计准则**。
+本指南是 MSLX 插件开发的**权威指导规范**。作为 AI Agent 或开发者，当编写、修改、重构或审查 MSLX 插件时，**必须严格遵循以下铁律与设计准则**。
+
+> [!IMPORTANT]
+> **最高优先准则：官方实时在线文档优先**
+> 当涉及 MSLX 宿主后端 API、SDK 接口、模型结构、前端 Store 或路由调用时，**必须优先以官方实时在线文档为最高基准**：
+> - 📄 **核心文档索引**：`https://mslx.mslmc.cn/llms.txt`
+> - 📚 **全量开发者文档**：`https://mslx.mslmc.cn/llms-full.txt`
+> - 🌐 **在线开发者手册**：`https://mslx.mslmc.cn/plugin-dev/`
+> 
+> 在编写具体业务逻辑或不确定参数时，AI Agent 应主动参考上述文档内容，避免臆造不存在的参数或方法。
 
 ---
 
 ## 核心开发准则 (Golden Rules)
+
+### 0. 官方文档权威优先：接口与 SDK 必须对齐官方源
+* 编写任何 Controller 路由、SignalR Hub、SDK 事件与配置方法时，必须优先以 `https://mslx.mslmc.cn/llms-full.txt` 及 `https://mslx.mslmc.cn/llms.txt` 中记录的最新方法签名为准，严禁凭空猜测宿主 API。
 
 ### 1. 宿主视觉融入：分场景排版与 TDesign 语义变量
 MSLX 插件界面根据挂载场景分为**三大形态**，严禁混淆：
@@ -86,9 +99,16 @@ npx @mslteam/mslx-plugin-dev-skill audit
 
 ---
 
-## 规范文档索引
+## 规范文档与官方在线源
 
-根据具体开发任务，查阅对应的参考规范：
+> [!IMPORTANT]
+> **官方权威文档索引优先准则**：
+> 编写插件业务逻辑、调用 SDK 函数或对接 API 路由时，**必须优先以官方实时在线文档为最高基准**。AI Agent 与开发者可直接读取专为大语言模型优化的文档索引端点：
+> - 📄 **核心文档索引**：[https://mslx.mslmc.cn/llms.txt](https://mslx.mslmc.cn/llms.txt)
+> - 📚 **全量开发者文档**：[https://mslx.mslmc.cn/llms-full.txt](https://mslx.mslmc.cn/llms-full.txt)
+> - 🌐 **官方在线开发文档**：[https://mslx.mslmc.cn/plugin-dev/](https://mslx.mslmc.cn/plugin-dev/)
+
+根据具体开发任务，查阅本 Skill 本地对应的参考规范：
 
 * **视觉规范与 3 大布局形态**：查阅 [frontend-design-system.md](./references/frontend-design-system.md)
 * **前端路由、9 大扩展插槽、宿主 Store 与 useFileUpload**：查阅 [frontend-integration.md](./references/frontend-integration.md)

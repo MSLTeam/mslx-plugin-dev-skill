@@ -1,6 +1,11 @@
 # MSLX 后端架构与 SDK 指南 (Backend Architecture & SDK)
 
 > **核心目标**：指导 C# 后端开发者理解插件生命周期、正确映射 Controller 与 SignalR 路由、安全使用事件总线、长耗时任务池以及跨插件生态通信。
+> 
+> [!IMPORTANT]
+> **官方实时文档优先**：接口签名、模型与 SDK 方法请以官方 LLM 知识库为最高准则：
+> - 核心文档：[https://mslx.mslmc.cn/llms.txt](https://mslx.mslmc.cn/llms.txt)
+> - 全量文档：[https://mslx.mslmc.cn/llms-full.txt](https://mslx.mslmc.cn/llms-full.txt)
 
 ---
 

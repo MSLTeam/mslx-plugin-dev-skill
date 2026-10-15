@@ -1,6 +1,11 @@
 # MSLX 前端接入指南 (Frontend Integration)
 
 > **核心目标**：指导开发者如何在前端注册菜单路由、注入扩展插槽、与宿主 Pinia 状态树通信以及调用宿主内置请求库。
+> 
+> [!IMPORTANT]
+> **官方实时文档优先**：前端 Pinia Store 状态树、路由格式与扩展插槽定义以官方 LLM 知识库为最高准则：
+> - 核心文档：[https://mslx.mslmc.cn/llms.txt](https://mslx.mslmc.cn/llms.txt)
+> - 全量文档：[https://mslx.mslmc.cn/llms-full.txt](https://mslx.mslmc.cn/llms-full.txt)
 
 ---
 

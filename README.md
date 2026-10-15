@@ -23,6 +23,15 @@ npx @mslteam/mslx-plugin-dev-skill audit
 
 ---
 
+## 官方实时在线文档与 LLM 上下文源
+
+在编写插件业务逻辑、调用 SDK 函数或对接 API 路由时，**优先以官方实时在线文档为准**。AI Agent 可直接读取针对大模型调优的纯文本上下文字典：
+- 📄 **核心文档索引**：[https://mslx.mslmc.cn/llms.txt](https://mslx.mslmc.cn/llms.txt)
+- 📚 **全量开发者文档**：[https://mslx.mslmc.cn/llms-full.txt](https://mslx.mslmc.cn/llms-full.txt)
+- 🌐 **在线开发手册**：[https://mslx.mslmc.cn/plugin-dev/](https://mslx.mslmc.cn/plugin-dev/)
+
+---
+
 ## 核心知识库与规范清单
 
 | 文档模块 | 重点说明 |
