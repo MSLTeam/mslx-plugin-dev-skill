@@ -133,6 +133,13 @@ MSLX 允许用户在设置中自定义面板背景壁纸与透明度。在宿主
 
 * **断点规律**：在手机上默认 `flex-col`（标题与按钮纵向排列，避免按钮被挤出屏幕边缘）；在桌面端通过 `sm:flex-row sm:items-center` 恢复横向两端对齐。
 
+> [!TIP]
+> **品牌标识胶囊竖条两种规范对比**：
+> - **场景 A（独立单页与卡片主标题）**：使用带柔和光晕的标杆胶囊条：
+>   `<div class="w-1.5 h-5 bg-[var(--color-primary)] rounded-full shadow-[0_0_8px_var(--color-primary-light)] opacity-90"></div>`
+> - **场景 C（宿主弹窗内 Tab 面板小节标题）**：使用扁平紧凑的微型胶囊条（不带外发光阴影，契合弹窗内嵌套层次）：
+>   `<div class="w-1 h-4 bg-[var(--color-primary)] rounded-full"></div>`
+
 ### 2.2 数据统计磁贴 (Stats Grid) 自适应
 ```html
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">

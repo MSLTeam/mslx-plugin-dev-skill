@@ -41,7 +41,7 @@ MSLX 插件界面根据挂载场景分为**三大形态**，严禁混淆：
   * **规范**：宿主弹窗内部已有统一背景和内边距，面板顶层容器使用扁平流式容器 `<div class="flex flex-col mx-auto w-full pb-8">`，**严禁外层嵌套 `design-card`**；使用小节标题条排版。
 * **绝对杜绝硬编码白底**：**严禁**使用 `bg-white`、`#ffffff`、`style="background: white"`！在暗黑模式或用户自定义毛玻璃壁纸下，硬编码白底会导致灾难性的视觉割裂。
 * **统一语义变量**：次级嵌套容器可使用 `bg-[var(--td-bg-color-secondarycontainer)]`，**严禁使用 UnoCSS 不支持的 `bg-[var(...)]/80` 斜杠透明度写法**；文本使用 `text-[var(--td-text-color-primary)]` 与 `text-[var(--td-text-color-secondary)]`，边框使用 `border-[var(--td-component-border)]`。
-* **标准品牌标识条**：模块与小节标题栏左侧统一配置胶囊竖条：
+* **标准品牌标识条**：模块与小节标题栏左侧统一配置胶囊竖条（卡片主标题使用带柔和光晕版，Tab 面板内嵌小节标题使用扁平微型版 `w-1 h-4`）：
   ```html
   <div class="w-1.5 h-5 bg-[var(--color-primary)] rounded-full shadow-[0_0_8px_var(--color-primary-light)] opacity-90"></div>
   ```

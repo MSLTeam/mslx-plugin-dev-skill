@@ -85,6 +85,11 @@ MSLX 允许插件将 UI 组件深度注入至宿主控制台的关键槽位：
 | `settings-profile-bottom` | 设置-基础设置页面底部卡片 | - | - |
 | `settings-daemon-bottom` | 设置-系统守护进程页面底部卡片 | - | - |
 
+> [!NOTE]
+> **插槽 Props 说明**：
+> - `instance-settings-tab`：宿主同时传递 `:server-id="instanceId"` 与 `:instance-id="instanceId"`，两者数值完全一致（均为路由中的数值型实例 ID），插件组件在 `defineProps` 声明其中任意一个即可。
+> - `instance-setting-more`：注入在实例设置“更多功能”区域末尾，通过 `:server-id` 接收当前实例 ID。
+
 ### 3.1 弹窗插槽实战示例 (`instance-console-dropdown`)
 在入口注册：
 ```ts
@@ -136,10 +141,10 @@ defineExpose({
 | **setting** | `getSettingStore()`, `useSettingStore()` | `mode` ('light' \| 'dark' \| 'auto')、`brandTheme` 主题色、`changeMode()` |
 | **permission** | `getPermissionStore()`, `usePermissionStore()` | `routers` 动态路由清单、`whiteListRouters` |
 | **instance** | `useInstanceListStore()` | `instanceList` 实例数组、`totalInstanceCount`、`refreshInstanceList()` |
-| **node** | `useNodeStore()` | `slaveNodes` 子节点清单、`activeNodeId` 当前激活节点、`setActiveNode()` |
+| **node** | `useNodeStore()` | `slaveNodes` 子节点清单、`activeNodeId` 当前激活节点、`fetchNodes(force?)` 拉取节点列表、`setActiveNode()` 切换激活节点 |
 | **frp** | `useTunnelsStore()` | `frpList` 隧道列表、`getTunnels()` 刷新数据 |
 | **pluginUI** | `usePluginUIStore()` | `extensions` 插槽注册表、`registerExtension()` |
-| **webpanel** | `useWebpanelStore()` | 面板样式配置（背景透明度、模糊度）、`uploadImage(file)` |
+| **webpanel** | `useWebpanelStore()` | `settings`（深/浅色背景与组件透明度、终端模糊度等）、`fetchSettings()`、`saveSettings()`、`uploadImage(file)` |
 | **update** | `useUpdateStore()` | `updateInfo` 最新版本信息、`checkAppUpdate()` |
 
 ```ts

@@ -89,6 +89,17 @@ public class MSLXPluginEntry : IPlugin
 }
 ```
 
+### 1.1 生命周期调用时序 (Lifecycle Order)
+宿主加载与卸载插件时，严格按照以下次序调用 `IPlugin` 接口方法：
+1. **`OnRegisterServices(IServiceCollection services)`**：宿主启动构建 IoC 容器阶段调用，用于向全局容器注册插件业务服务（如 Singleton/Scoped 服务）。
+2. **`OnPluginInitialize(IServiceProvider serviceProvider)`**：宿主构建完成全局 `ServiceProvider` 后调用，用于保存插件单例、初始化插件私有数据目录或执行环境准备。
+3. **`OnRegisterEndpoints(IEndpointRouteBuilder endpoints)`**：宿主映射 Web API 与路由端点时调用，用于挂载 Minimal API、SignalR Hub 等。
+4. **`OnLoad()`**：插件正式挂载运行，在此处订阅全局事件总线（`SDK.MSLX.Events`）、启动后台监控或定时任务。
+5. **`OnUnload()`**：插件卸载时调用，开发者应在此显式注销事件（`-=`）、停止后台循环任务并释放非托管资源。
+
+> [!TIP]
+> **宿主自动注销兜底机制**：除了在 `OnUnload()` 中手动注销事件外，宿主底层在卸载插件程序集时，会自动调用 `SDK.MSLX.Events.UnregisterPlugin(pluginAssembly)` 移除该插件注册的所有事件处理器，杜绝内存泄漏与悬挂引用。
+
 ---
 
 ## 2. API 控制器与路由规范
@@ -131,11 +142,11 @@ MSLX 提供了完备的系统级生命周期钩子：
 ### 3.1 常用事件清单
 | 事件分类 | 事件名 | 触发时机与关键数据 |
 | :--- | :--- | :--- |
-| **备份管理** | `OnBackupStarting`<br>`OnBackupCompleted`<br>`OnBackupFailed` | 备份前（支持 `e.Cancel = true` 拦截）、写入完成（附带大小、时间、路径） |
-| **服务器实例** | `OnServerStarting`<br>`OnServerStarted`<br>`OnServerStopped`<br>`OnServerCrashed` | 实例启动校验（支持 `e.Cancel` 拦截）、进程启动获得 PID、完全退出、崩溃非0告警 |
+| **备份管理** | `OnBackupStarting`<br>`OnBackupCompleted`<br>`OnBackupFailed`<br>`OnBackupDeleted` | 备份前（支持 `e.Cancel = true` 拦截）、写入完成（附带大小、时间、路径）、失败告警、备份删除（`e.IsAutoRoll` 标记是否因超出份数自动滚动删除） |
+| **服务器实例** | `OnServerStarting`<br>`OnServerStarted`<br>`OnServerStopping`<br>`OnServerStopped`<br>`OnServerCrashed` | 实例启动校验（支持 `e.Cancel` 拦截）、进程启动获得 PID、准备停止（附带 `e.StopCommand`）、完全退出（附带 `e.ExitCode` 与 `e.Uptime`）、崩溃非0告警 |
 | **控制台指令** | `OnServerLogReceived`<br>`OnServerCommandExecuting` | 服务端日志输出监听（群服互通）、发送后台指令拦截（屏蔽危险 op） |
-| **计划任务** | `OnTaskExecuting`<br>`OnTaskExecuted` | 宿主内部定时器触发追踪与结果监控 |
-| **FRP 隧道** | `OnFrpStarting`<br>`OnFrpStarted`<br>`OnFrpStopped`<br>`OnFrpLogReceived` | 穿透核心启动、进程 PID、代理建立日志流捕获 |
+| **计划任务** | `OnTaskExecuting`<br>`OnTaskExecuted` | 宿主内部定时器触发追踪与结果监控（附带 `e.TaskId`, `e.TaskName`, `e.Success`） |
+| **FRP 隧道** | `OnFrpStarting`<br>`OnFrpStarted`<br>`OnFrpStopping`<br>`OnFrpStopped`<br>`OnFrpLogReceived` | 穿透核心启动（附带配置）、进程 PID、准备停止、完全退出、代理建立日志流捕获 |
 
 > [!WARNING]
 > **绝对准则**：事件处理器内部耗时的文件读写、压缩或网络请求**必须转移到 `Task.Run`**，绝不能同步占用宿主触发线程。
@@ -147,10 +158,10 @@ MSLX 提供了完备的系统级生命周期钩子：
 长时间运行的任务（如大文件云同步、整机导入导出）必须接入宿主任务池，直观在 WebPanel 右上角抽屉中呈现：
 
 ```csharp
-// 1. 创建任务 (TaskType.Plugin 表示插件任务)
+// 1. 创建任务 (TaskType.Plugin 表示插件任务，instanceId 为 uint 类型，0 表示非特定实例)
 var (task, token) = SDK.MSLX.Tasks.CreateTask(
     userId: "", 
-    instanceId: 0, 
+    instanceId: 0u, 
     type: MSLX.SDK.Models.Files.TaskType.Plugin, 
     title: "正在备份数据至云端", 
     targetName: "backup.zip"
@@ -160,8 +171,8 @@ Task.Run(async () =>
 {
     try
     {
-        // 2. 更新进度百分比 (0-100) 与描述文字
-        SDK.MSLX.Tasks.UpdateProgress(task.Id, 25, "正在分片上传...");
+        // 2. 更新进度百分比 (0-100) 与描述文字，支持指定 TaskState 状态（默认 TaskState.Running）
+        SDK.MSLX.Tasks.UpdateProgress(task.Id, 25, "正在分片上传...", MSLX.SDK.Models.Files.TaskState.Running);
         await DoWorkAsync(token);
 
         SDK.MSLX.Tasks.UpdateProgress(task.Id, 100, "同步完成");
@@ -182,8 +193,30 @@ Task.Run(async () =>
 
 ---
 
-## 5. 跨插件解耦通信 (`SDK.MSLX.Config.GetPluginConfig`)
+## 5. 插件专属配置读写与跨插件通信 (`IPluginConfigBridge`)
 
+### 5.1 插件私有配置持久化 (`this.Config()`)
+插件无需自行处理底层 JSON 文件流与路径拼凑，通过扩展方法 `this.Config()` 即可读写专属的配置数据：
+
+```csharp
+var myConfig = this.Config();
+
+// 1. 读取单个键
+var isAutoSync = myConfig.ReadConfigKey("AutoSync")?.Value<bool>() ?? false;
+
+// 2. 写入单个键并持久化落盘
+myConfig.WriteConfigKey("AutoSync", true);
+myConfig.WriteConfigKey("LastSyncTime", DateTime.UtcNow.ToString("O"));
+
+// 3. 读取完整配置为 JObject
+var fullJson = myConfig.ReadConfig();
+
+// 4. 批量修改后完整写回
+fullJson["Version"] = "1.2.0";
+myConfig.WriteConfig(fullJson);
+```
+
+### 5.2 跨插件解耦通信 (`SDK.MSLX.Config.GetPluginConfig`)
 当需要检测或读取宿主安装的其他插件时，使用动态桥接，无需直接引用目标程序集：
 
 ```csharp
@@ -206,11 +239,19 @@ if (gfsBridge != null)
 插件无需自行引入 `HttpClient` 或第三方库，SDK 提供了轻量且自动管理连接池的 HTTP 客户端：
 
 ```csharp
-// 1. GET 请求
+// 1. GET 请求 (返回 PluginHttpResponse)
 var getRes = await SDK.MSLX.Http.GetAsync("https://api.mslmc.cn/v3/query/notice");
 if (getRes.IsSuccessStatusCode)
 {
-    SDK.MSLX.Logger.Info($"收到响应: {getRes.Content}");
+    // Content 为 string?，直接获取响应文本
+    SDK.MSLX.Logger.Info($"状态码: {getRes.StatusCode}, 内容: {getRes.Content}");
+    // 支持读取响应 Headers 与 Cookies 字典
+    var serverHeader = getRes.Headers.GetValueOrDefault("Server");
+}
+else
+{
+    // 请求失败时，可通过 ResponseException 查看具体异常信息
+    SDK.MSLX.Logger.Error($"请求失败 [{getRes.StatusCode}]: {getRes.ResponseException?.Message}");
 }
 
 // 2. POST 请求 (支持 Json / FormUrlEncoded / Text / Octet)

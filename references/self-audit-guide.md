@@ -4,7 +4,7 @@
 
 开发者可以直接在插件根目录下运行命令行工具执行自动化诊断：
 ```bash
-npx mslx-plugin-dev-skill audit
+npx @mslteam/mslx-plugin-dev-skill audit
 ```
 同时，请结合以下 5 大审查维度进行人工深度复核。
 
@@ -131,9 +131,10 @@ MSLX WebPanel 拥有高度统一的现代毛玻璃与卡片视觉风格。当用
 ### 5.2 程序集扫描、嵌入清单与单文件合并
 * **审查标准**：
   - 入口文件顶部必须声明 `[assembly: ApplicationPart("程序集名称")]`，否则宿主无法反射发现插件的 Controller，导致所有 API 报 404。
-  - `.csproj` 必须配置 `<GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>`，且引用 `MSLX.SDK` 时必须声明 `ExcludeAssets="runtime"`。
+  - `.csproj` 必须配置 `<GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>`，且引用 `MSLX.SDK` 时**必须声明 `ExcludeAssets="runtime"`**，防止宿主核心库被重复打包导致类型冲突。
+  - 项目根目录必须包含仅有空 `<Project></Project>` 的 `ILRepack.targets`，用于屏蔽 NuGet 包默认自动化 Target，避免与 `MergeDependencies` 重复冲突执行。
   - `Frontend/vite.config.ts` 必须配置 `cssInjectedByJsPlugin()`，并将构建输出文件名固定为 `mslx-plugin-entry.js`。
-  - 发布构建必须使用 `dotnet build -c Release`，验证 `ILRepack` 是否成功将第三方 DLL 合并到单个插件 DLL 中，前端 `Frontend/dist` 是否作为嵌入式资源打入。
+  - 发布构建必须使用 `dotnet build -c Release`，验证 `ILRepack` 是否成功将第三方 DLL 合并到单个插件 DLL 中，前端 `Frontend/dist` 是否作为嵌入式资源打入，且最终输出目录仅产出单一的 `[插件程序集名].dll`。
 
 ---
 

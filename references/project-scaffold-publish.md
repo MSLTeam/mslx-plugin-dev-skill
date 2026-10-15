@@ -195,11 +195,11 @@ dotnet build -c Release
 
 ---
 
-## 4. 发布插件至 MSLX 官方插件市场
+## 5. 发布插件至 MSLX 官方插件市场
 
 官方插件市场站点：[https://mslx-plugins.mslmc.net](https://mslx-plugins.mslmc.net)
 
-### 4.1 提交流程
+### 5.1 提交流程
 1. **登录授权**：访问市场首页，使用 MSL 用户中心账号登录。
 2. **填写基本信息**：
    - 进入“插件管理 -> 插件发布”。
