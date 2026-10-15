@@ -137,7 +137,7 @@ defineExpose({
 
 | Store 模块 | 导出函数 / Hook | 常用状态与核心方法 |
 | :--- | :--- | :--- |
-| **user** | `getUserStore()`, `useUserStore()` | `userInfo`（用户名、角色、系统信息）、`token`、`baseUrl`、`isAdmin` |
+| **user** | `getUserStore()`, `useUserStore()` | `userInfo`（用户名、角色、系统信息）、`token`、`baseUrl`、`isAdmin`；媒体与下载降权凭据 (v1.7.3+)：`getMediaToken()`、`getSyncMediaToken()`、`getMediaTokenParam()`、`getDownloadToken()`、`getSyncDownloadToken()` |
 | **setting** | `getSettingStore()`, `useSettingStore()` | `mode` ('light' \| 'dark' \| 'auto')、`brandTheme` 主题色、`changeMode()` |
 | **permission** | `getPermissionStore()`, `usePermissionStore()` | `routers` 动态路由清单、`whiteListRouters` |
 | **instance** | `useInstanceListStore()` | `instanceList` 实例数组、`totalInstanceCount`、`refreshInstanceList()` |
@@ -169,11 +169,141 @@ console.log('当前激活子节点:', nodeStore?.activeNodeId);
 // 4. 监听主题与颜色模式
 const settingStore = stores?.getSettingStore?.() || stores?.useSettingStore?.();
 const isDarkMode = computed(() => settingStore?.mode === 'dark');
+
+// 5. 获取受保护媒体资源降权凭据 (Media Token, v1.7.3+)
+// 优先使用 ?media_token=xxx，无则回退 ?x-user-token=yyy
+const tokenParam = userStore?.getMediaTokenParam?.() || '';
+const tileUrl = `${userStore?.baseUrl}/api/plugin/mslx-plugin-map-render/map/1/0/0${tokenParam}`;
+
+// 6. 获取文件下载专用凭据 (Download Token, v1.7.3+)
+const dlToken = await userStore?.getDownloadToken?.();
+const downloadUrl = `${userStore?.baseUrl}/api/plugins/my-plugin/backups/download?file=world.zip&download_token=${encodeURIComponent(dlToken)}`;
 ```
 
 ---
 
-## 5. 宿主请求实例 (`mslxRequest`)
+## 5. 降权凭据规范：Media Token 与 Download Token (v1.7.3+)
+
+在前端界面中，`<img>`、`<video>`、`<a>` 下载链接以及地图瓦片切片（如 Leaflet / OpenLayers）等原生 HTTP 请求无法自定义请求头（`Authorization: Bearer <token>`），通常必须将鉴权信息以 URL Query 参数形式传递。
+
+> [!CAUTION]
+> **严禁将管理员主凭据 (`x-user-token`) 暴露在公开 URL 中**！
+> 主 Token 拥有全局管理权限（包括修改配置、执行控制台指令、删除数据等全量写操作）。若直接拼接到 URL 中，会在浏览器历史记录、Referer 头、服务端代理与访问日志中泄露。
+> 为此，MSLX 提供了 **降权凭据 (Scoped Token)** 机制：**仅限 `GET` 和 `HEAD` 只读操作**，任何写入行为（`POST`/`PUT`/`DELETE`）直接返回 `403 Forbidden`。
+
+MSLX 提供两种不同生命周期与权限边界的降权凭据，开发者必须根据具体业务场景选择：
+
+### 5.1 什么时候使用 Media Token (媒体资源凭据)？
+
+* **核心定位**：专为页面轻量、高频展示的多媒体资源设计。
+* **适用典型场景**：
+  1. **世界地图瓦片切片渲染**：例如 Leaflet 瓦片图层加载的世界地图切片（如 `/map/{z}/{x}/{y}?media_token=...`）。
+  2. **实例图标与世界缩略图**：例如服务器实例 Icon、世界存档缩略图（如 `/api/instance/icon?media_token=...`）。
+  3. **玩家皮肤、头像与徽标展示**：在 `<img>` 标签中展示的只读图片素材。
+  4. **轻量级音频与音效播放**：Web 页面背景提示音等小体积静态资源。
+* **核心机制与为什么选它**：
+  * **存储策略**：存储于 `localStorage`（持久化）。
+  * **生命周期**：与当前用户登录会话（最长 24 小时）对齐，页面刷新不丢失。
+  * **强缓存友好**：由于刷新页面不会重新生成 token，切片与图像资源能**稳定命中浏览器的 HTTP 强缓存**（304 Not Modified 或 memory/disk cache），避免每次刷新因 Token 变动导致全量切片重新下载与画面闪烁。
+* **前端调用方式**：
+  ```ts
+  const stores = (window as any).MSLX_Stores;
+  const userStore = stores?.getUserStore?.() || stores?.useUserStore?.();
+
+  // 方式 A（一键拼接，最推荐）：获取 URL 查询参数字符串
+  // 优先返回 '?media_token=xxx'，若尚未缓存则安全回退 '?x-user-token=yyy'
+  const tokenParam = userStore?.getMediaTokenParam?.() || '';
+  const tileLayerUrl = `${userStore?.baseUrl}/api/plugin/mslx-plugin-map-render/map/{z}/{x}/{y}${tokenParam}`;
+
+  // 方式 B：异步获取最新有效媒体凭据（内置防在途并发与过期静默刷新）
+  const mediaToken = await userStore?.getMediaToken?.();
+
+  // 方式 C：同步读取本地已缓存凭据
+  const cachedMediaToken = userStore?.getSyncMediaToken?.();
+  ```
+
+---
+
+### 5.2 什么时候使用 Download Token (下载专用凭据)？
+
+* **核心定位**：专为大体积文件导出下载、备份数据打包与长视频流播放设计。
+* **适用典型场景**：
+  1. **实例备份包下载**：例如插件打包生成的 `.zip`、`.tar.gz` 备份文件导出（通过 `window.open(url)` 或 `<a :href="url" download>`）。
+  2. **游戏世界存档与模组包导出**：向客户端投递大容量压缩包文件。
+  3. **运行日志与诊断报告下载**：服务器完整日志导出。
+  4. **长视频流媒体播放**：例如使用 `<video>` 或 ArtPlayer 播放游戏回放与长视频（支持 HTTP 206 Partial Content 断点续传与 Range 请求）。
+* **核心机制与为什么选它**：
+  * **存储策略**：存储于 `sessionStorage`（会话级存储）。
+  * **生命周期**：短效临时凭据（默认有效时间 2 小时，提前 10 分钟在前端自动刷新缓冲），**随当前浏览器标签页关闭即刻销毁**。
+  * **高危资产隔离**：备份和核心文件属于高价值敏感资产，采用短效会话凭据能够最大化压缩凭据截获后的重放利用窗口。
+  * **单次请求聚合**：在 2 小时会话内，无论同一标签页下下载多少个文件或连续播放多少个视频，前端只向后端请求 1 次签名，兼顾安全与性能。
+* **前端调用方式**：
+  ```ts
+  const stores = (window as any).MSLX_Stores;
+  const userStore = stores?.getUserStore?.() || stores?.useUserStore?.();
+
+  // 异步获取当前有效下载凭据（若快到期会自动静默换新）
+  const downloadToken = await userStore?.getDownloadToken?.();
+
+  // 构造下载链接并触发浏览器下载
+  const downloadUrl = `${userStore?.baseUrl}/api/plugins/my-plugin/backups/download?file=world.zip&download_token=${encodeURIComponent(downloadToken)}`;
+  window.open(downloadUrl);
+  ```
+
+---
+
+### 5.3 Media Token 与 Download Token 选型决策表
+
+| 维度 | Media Token (媒体凭据) | Download Token (下载凭据) |
+| :--- | :--- | :--- |
+| **主要业务场景** | 地图切片瓦片、实例图标、缩略图、头像、UI 图片展示 | 备份文件下载、存档打包导出、日志导出、长视频播放流 |
+| **URL 参数名** | `?media_token=xxx` | `?download_token=xxx` |
+| **存储介质** | `localStorage`（跨页面刷新保留） | `sessionStorage`（标签页关闭即销毁） |
+| **有效期** | 与当前登录会话一致（最长 24 小时） | 短效 2 小时（提前 10 分钟自动缓冲刷新） |
+| **HTTP 缓存目标** | 必须稳定命中浏览器强缓存（避免地图切片闪烁） | 一次性下载或按需 Range 请求，不依赖长期强缓存 |
+| **对应后端 Scope** | `[AllowTokenScope(TokenScopes.Media)]` | `[AllowTokenScope(TokenScopes.Download)]` |
+| **请求方法限制** | 严格仅允许 `GET` 与 `HEAD` | 严格仅允许 `GET` 与 `HEAD` |
+
+---
+
+### 5.4 后端 Controller 如何声明 Scope 白名单？
+
+当客户端使用 Scoped Token 访问插件接口时，宿主身份网关（`AuthMiddleware`）会检查目标端点是否显式声明了对应的 Scope 白名单：
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using MSLX.SDK.Attributes;
+using MSLX.SDK.Constants;
+
+namespace MSLX.Plugin.MyAwesome.Controllers;
+
+[ApiController]
+[Route("api/plugins/mslx-plugin-my-awesome/[controller]")]
+public class MediaController : ControllerBase
+{
+    // 允许通过 Media Token 访问（如地图切片或图片展示）
+    [HttpGet("tile/{z}/{x}/{y}")]
+    [AllowTokenScope(TokenScopes.Media)]
+    public IActionResult GetTile(int z, int x, int y)
+    {
+        // 业务逻辑...
+        return PhysicalFile(tilePath, "image/png");
+    }
+
+    // 允许通过 Download Token 访问（如大文件下载）
+    [HttpGet("download")]
+    [AllowTokenScope(TokenScopes.Download)]
+    public IActionResult DownloadBackup([FromQuery] string filename)
+    {
+        // 业务逻辑...
+        return PhysicalFile(backupPath, "application/zip", filename);
+    }
+}
+```
+
+---
+
+## 6. 宿主请求实例 (`mslxRequest`)
 
 插件无需自行引入 Axios，直接复用宿主配置好的请求客户端（`import request from 'mslx-request'` 或 `(window as any).mslxRequest`）：
 

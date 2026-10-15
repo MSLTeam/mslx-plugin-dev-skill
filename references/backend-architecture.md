@@ -133,6 +133,49 @@ public class ConfigController : ControllerBase
 }
 ```
 
+### 2.1 降权凭据授权与白名单特性 (AllowTokenScope)
+
+在需要通过 URL Query 传递鉴权凭据的场景（例如地图切片图层、图片展示、大文件下载与长视频流播放），前端无法携带自定义 Header。为防范主 Token 泄露，宿主网关提供了降权凭据（Scoped Token）访问机制：
+
+* **核心防护规则**：
+  1. **只读拦截**：所有携带降权凭据的请求**严格仅允许 `GET` 与 `HEAD` 方法**，写操作（`POST`/`PUT`/`DELETE`）直接被网关拦截返回 403。
+  2. **Scope 白名单校验**：端点方法必须使用 `[AllowTokenScope(...)]` 显式声明允许的凭据类型，否则网关默认拒绝访问。
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using MSLX.SDK.Attributes;
+using MSLX.SDK.Constants;
+
+namespace MSLX.Plugin.MyAwesome.Controllers;
+
+[ApiController]
+[Route("api/plugins/mslx-plugin-my-awesome/[controller]")]
+public class MediaController : ControllerBase
+{
+    /// <summary>
+    /// 地图瓦片切片/图片接口：允许 Media Token 访问 (24h长效、持久化缓存、强缓存命中)
+    /// </summary>
+    [HttpGet("tile/{z}/{x}/{y}")]
+    [AllowTokenScope(TokenScopes.Media)]
+    public IActionResult GetTile(int z, int x, int y)
+    {
+        // 返回地图切片图片流...
+        return PhysicalFile(tilePath, "image/png");
+    }
+
+    /// <summary>
+    /// 文件导出/备份打包下载接口：允许 Download Token 访问 (2h短效、标签页销毁、断点续传)
+    /// </summary>
+    [HttpGet("download")]
+    [AllowTokenScope(TokenScopes.Download)]
+    public IActionResult DownloadBackup([FromQuery] string file)
+    {
+        // 返回文件下载流...
+        return PhysicalFile(filePath, "application/zip", file);
+    }
+}
+```
+
 ---
 
 ## 3. 全局事件总线 (`SDK.MSLX.Events`)

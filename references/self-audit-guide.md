@@ -118,6 +118,12 @@ MSLX WebPanel 拥有高度统一的现代毛玻璃与卡片视觉风格。当用
   1. 远端存储凭据（如 S3 SecretKey、WebDAV 密码、FRP Token）严禁明文保存在磁盘配置中。应使用 AES-256 加密后再落盘。
   2. 控制台日志流中若包含用户 Token，必须在输出前打码处理（例如 `tok_***`）。
 
+### 4.5 降权凭据隔离与 URL 凭据防泄露 (Scoped Tokens, v1.7.3+)
+* **审查标准**：
+  1. 严禁在 `<img>`、`<video>`、`<a>` 或地图瓦片切片等暴露在 URL Query 的请求中直接拼接系统管理员主 Token。
+  2. **媒体展示场景**（瓦片切片、图标、头像、缩略图）：前端必须使用 `userStore.getMediaTokenParam()` 或 `userStore.getMediaToken()`，后端接口必须标注 `[AllowTokenScope(TokenScopes.Media)]`。
+  3. **文件导出下载场景**（备份包下载、存档导出、长视频流）：前端必须使用 `await userStore.getDownloadToken()`，后端接口必须标注 `[AllowTokenScope(TokenScopes.Download)]`。
+
 ---
 
 ## 维度五：事件总线、线程安全与打包生命周期 (Lifecycle & Packaging)

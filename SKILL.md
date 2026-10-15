@@ -67,6 +67,9 @@ MSLX 插件界面根据挂载场景分为**三大形态**，严禁混淆：
 * **数据目录沙箱**：插件文件 IO 必须以 `this.Config().GetDataPath()` 为唯一合法沙箱根目录。
 * **路径逃逸防御**：拼接用户传入的文件名时，必须通过 `Path.GetFullPath(target).StartsWith(basePath)` 校验，严防 `../../` 路径穿越。
 * **API 统一网关与鉴权**：Controller 路由统一为 `/api/plugins/{plugin-id}/...`，入口显式声明 `[assembly: ApplicationPart("程序集名称")]`，敏感管理接口添加 `[Authorize(Roles = "admin")]`。
+* **降权凭据规范 (Scoped Tokens, v1.7.3+)**：**严禁将主凭据直接拼接在 URL Query 中**！
+  * 地图切片瓦片、实例图标与图片展示：使用 `Media Token`（前端 `userStore.getMediaTokenParam()`，后端标注 `[AllowTokenScope(TokenScopes.Media)]`）。
+  * 备份包导出、文件下载与长视频流：使用 `Download Token`（前端 `await userStore.getDownloadToken()`，后端标注 `[AllowTokenScope(TokenScopes.Download)]`）。
 
 ---
 
@@ -140,3 +143,4 @@ npx @mslteam/mslx-plugin-dev-skill audit
 - [ ] 前端构建配置包含 `vite-plugin-css-injected-by-js` 且产物固定为 `mslx-plugin-entry.js`。
 - [ ] C# 文件读写均在 `this.Config().GetDataPath()` 沙箱内，无路径穿越漏洞。
 - [ ] 事件处理器均使用 `Task.Run` 异步化，未阻塞宿主主执行流。
+- [ ] 媒体资源展示或文件下载是否按规范使用 Scoped Token (Media Token / Download Token)，严禁在 URL Query 中泄露主管理员 Token。
