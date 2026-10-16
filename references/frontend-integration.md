@@ -67,6 +67,30 @@ export const pluginConfig: PluginConfig = {
 }
 ```
 
+### 2.3 新增免登录全屏独立页面 (v1.7.3+)
+适用于向外部普通玩家公开展示的**全屏单页**（如网页世界地图、对外服务器大屏看板、状态大屏等）。此类页面**不包含**宿主顶部 Header 导航栏与侧边 SideNav 菜单，且**允许未登录访客直接访问**。
+
+1. **后端声明契约**：在 `MSLXPluginEntry.cs` 中声明 `public bool HasPublicPages => true;`；
+2. **前端独立路由**：直接以全屏 Vue 组件作为根 `component`（**严禁**包裹 `HOST_LAYOUT`），并在 `meta` 中配置 `anonymous: true` 与 `hidden: true`：
+
+```ts
+import PublicMapPage from './views/PublicMapPage.vue';
+
+{
+  path: '/mslx-plugin-map-render/public',
+  name: 'MslxPluginMapRenderPublic',
+  component: PublicMapPage, // 全屏 Vue 独立组件，不包 HOST_LAYOUT
+  meta: {
+    title: '服务器世界地图',
+    anonymous: true, // 核心：声明支持免登录公开访问
+    hidden: true,    // 隐藏在后台侧边菜单之外
+  },
+}
+```
+
+> [!TIP]
+> **宿主管理员双重开关保障**：插件安装启用后，宿主后台「插件管理」界面会自动展示专属的 **“公开页面”** 开关。只有服主/管理员主动开启后，外部未登录玩家方可访问该页面。
+
 ---
 
 ## 3. 9 大官方扩展插槽 (Extensions / Slots)

@@ -36,6 +36,7 @@ public class MSLXPluginEntry : IPlugin
     public string Developer => "开发者ID";
     public string AuthorUrl => "https://github.com/your-username";
     public string PluginUrl => "https://mslx-plugins.mslmc.net/plugins/mslx-plugin-my-awesome";
+    public bool HasPublicPages => false; // 若包含对外免登录公开页面，覆写为 true (v1.7.3+)
 
     public void OnPluginInitialize(IServiceProvider serviceProvider)
     {
