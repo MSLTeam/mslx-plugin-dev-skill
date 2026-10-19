@@ -114,8 +114,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace MSLX.Plugin.MyAwesome.Controllers;
 
 [ApiController]
-// 路由规范：必须以 api/plugins/{plugin-id}/ 为前缀
-[Route("api/plugins/mslx-plugin-my-awesome/[controller]")]
+// 路由规范：必须以 api/plugin/{plugin-id}/ 为前缀（单数 plugin，严禁使用复数 plugins）
+[Route("api/plugin/mslx-plugin-my-awesome/[controller]")]
 public class ConfigController : ControllerBase
 {
     [HttpGet]
@@ -150,7 +150,7 @@ using MSLX.SDK.Constants;
 namespace MSLX.Plugin.MyAwesome.Controllers;
 
 [ApiController]
-[Route("api/plugins/mslx-plugin-my-awesome/[controller]")]
+[Route("api/plugin/mslx-plugin-my-awesome/[controller]")]
 public class MediaController : ControllerBase
 {
     /// <summary>
@@ -348,7 +348,7 @@ string myPluginDir = this.Config().GetDataPath();
 public void OnRegisterEndpoints(IEndpointRouteBuilder endpoints)
 {
     // 限制仅具有 'server:read' 权限范围的 Token 访问该端点
-    endpoints.MapGet("/api/plugins/mslx-plugin-my-awesome/ping", () => "pong")
+    endpoints.MapGet("/api/plugin/mslx-plugin-my-awesome/ping", () => "pong")
              .AllowTokenScope("server:read");
 }
 ```

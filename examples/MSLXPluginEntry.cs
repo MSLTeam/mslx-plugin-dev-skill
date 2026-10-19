@@ -60,7 +60,8 @@ public class MSLXPluginEntry : IPlugin
 
     public void OnRegisterEndpoints(IEndpointRouteBuilder endpoints)
     {
-        // 映射 SignalR 或自定义端点
+        // 映射 SignalR Hub 端点（遵循 /api/hubs/plugin/{plugin-id}/... 统一规范）
+        // endpoints.MapHub<MyHub>("/api/hubs/plugin/mslx-plugin-awesome/stream");
     }
 
     /// <summary>

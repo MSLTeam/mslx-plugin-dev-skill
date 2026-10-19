@@ -201,7 +201,7 @@ const tileUrl = `${userStore?.baseUrl}/api/plugin/mslx-plugin-map-render/map/1/0
 
 // 6. 获取文件下载专用凭据 (Download Token, v1.7.3+)
 const dlToken = await userStore?.getDownloadToken?.();
-const downloadUrl = `${userStore?.baseUrl}/api/plugins/my-plugin/backups/download?file=world.zip&download_token=${encodeURIComponent(dlToken)}`;
+const downloadUrl = `${userStore?.baseUrl}/api/plugin/my-plugin/backups/download?file=world.zip&download_token=${encodeURIComponent(dlToken)}`;
 ```
 
 ---
@@ -270,7 +270,7 @@ MSLX 提供两种不同生命周期与权限边界的降权凭据，开发者必
   const downloadToken = await userStore?.getDownloadToken?.();
 
   // 构造下载链接并触发浏览器下载
-  const downloadUrl = `${userStore?.baseUrl}/api/plugins/my-plugin/backups/download?file=world.zip&download_token=${encodeURIComponent(downloadToken)}`;
+  const downloadUrl = `${userStore?.baseUrl}/api/plugin/my-plugin/backups/download?file=world.zip&download_token=${encodeURIComponent(downloadToken)}`;
   window.open(downloadUrl);
   ```
 
@@ -302,7 +302,7 @@ using MSLX.SDK.Constants;
 namespace MSLX.Plugin.MyAwesome.Controllers;
 
 [ApiController]
-[Route("api/plugins/mslx-plugin-my-awesome/[controller]")]
+[Route("api/plugin/mslx-plugin-my-awesome/[controller]")]
 public class MediaController : ControllerBase
 {
     // 允许通过 Media Token 访问（如地图切片或图片展示）
@@ -346,7 +346,7 @@ interface BackupItem {
 const fetchBackups = async () => {
   try {
     const list = await request.get<BackupItem[]>({
-      url: '/api/plugins/mslx-plugin-cloud-backup/backups',
+      url: '/api/plugin/mslx-plugin-cloud-backup/backups',
     });
     // 直接使用 list 数组，无需 list.data
     console.log('获取到的备份清单:', list.length);
@@ -358,7 +358,7 @@ const fetchBackups = async () => {
 // 2. 发起 POST 请求（支持显式指定子节点路由）
 const saveConfig = async (payload: any) => {
   await request.post({
-    url: '/api/plugins/mslx-plugin-cloud-backup/config',
+    url: '/api/plugin/mslx-plugin-cloud-backup/config',
     data: payload
   }, {
     // 关键参数：若请求需定向到当前激活的分布式子节点，显式声明 true

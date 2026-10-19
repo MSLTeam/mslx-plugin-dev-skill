@@ -105,7 +105,7 @@ MSLX WebPanel 拥有高度统一的现代毛玻璃与卡片视觉风格。当用
 
 ### 4.2 API 路由网关与未授权访问
 * **审查标准**：
-  1. 所有 Controller 路由前缀必须为 `/api/plugins/{plugin-id}/...`，受宿主反向代理与身份网关保护。
+  1. 所有 Controller 路由前缀必须为 `/api/plugin/{plugin-id}/...`（单数 `plugin`，严禁使用复数 `plugins`），受宿主反向代理与身份网关保护；SignalR Hub 端点规范为 `/api/hubs/plugin/{plugin-id}/...`。
   2. 敏感的增删改查、命令下发接口，必须明确标记 `[Authorize(Roles = "admin")]`，禁止匿名或越权调用。
 
 ### 4.3 XSS 跨站脚本防范

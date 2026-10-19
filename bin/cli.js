@@ -307,14 +307,40 @@ function handleAudit() {
       hasApplicationPart = true;
     }
 
-    // 检查 Controller 路由前缀
+    // 检查 Controller 路由前缀与废弃复数前缀
     if (content.includes('[ApiController]') || content.includes(': ControllerBase')) {
-      if (!content.includes('api/plugins/') && !content.includes('api/plugin/')) {
+      if (!content.includes('api/plugin/')) {
         issues.push({
           file: relPath,
           title: 'Controller 路由前缀不合规',
-          desc: '控制器必须遵循 /api/plugins/{plugin-id}/ 路由前缀规范，否则无法被宿主 API 网关认证和转发。',
-          fix: '在 Controller 上设置 [Route("api/plugins/{plugin-id}/[controller]")]'
+          desc: '控制器必须遵循 /api/plugin/{plugin-id}/ 路由前缀规范（单数 plugin，严禁使用复数 plugins），否则无法被宿主 API 网关认证和转发。',
+          fix: '在 Controller 上设置 [Route("api/plugin/{plugin-id}/[controller]")]'
+        });
+      } else if (content.includes('api/plugins/')) {
+        warnings.push({
+          file: relPath,
+          title: '使用了废弃的复数路由前缀 api/plugins/',
+          desc: '检测到使用了旧版复数路由前缀 api/plugins/，官方规范已统一定为单数 /api/plugin/{plugin-id}/。',
+          fix: '将路由前缀从 api/plugins/ 改为 api/plugin/'
+        });
+      }
+    }
+
+    // 检查 SignalR Hub 端点路由规范
+    if (content.includes('MapHub')) {
+      if (content.includes('/api/hubs/plugins/')) {
+        warnings.push({
+          file: relPath,
+          title: 'SignalR Hub 端点包含废弃复数前缀 /api/hubs/plugins/',
+          desc: 'SignalR Hub 端点规范已统一为 /api/hubs/plugin/{plugin-id}/...（plugin 单数无 s）。',
+          fix: '将端点前缀从 /api/hubs/plugins/ 改为 /api/hubs/plugin/'
+        });
+      } else if (!content.includes('/api/hubs/plugin/')) {
+        warnings.push({
+          file: relPath,
+          title: 'SignalR Hub 端点未遵循官方前缀规范',
+          desc: '插件 SignalR Hub 端点建议遵循 /api/hubs/plugin/{plugin-id}/ 统一前缀规范。',
+          fix: '在 MapHub 时使用 "/api/hubs/plugin/{plugin-id}/xxx"'
         });
       }
     }
