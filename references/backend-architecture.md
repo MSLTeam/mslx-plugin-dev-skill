@@ -37,6 +37,7 @@ public class MSLXPluginEntry : IPlugin
     public string AuthorUrl => "https://github.com/your-username";
     public string PluginUrl => "https://mslx-plugins.mslmc.net/plugins/mslx-plugin-my-awesome";
     public bool HasPublicPages => false; // 若包含对外免登录公开页面，覆写为 true (v1.7.3+)
+    public PluginMultiNodeSupport SupportsMultiNode => PluginMultiNodeSupport.Supported; // 多节点支持声明 (v1.7.6+)
 
     public void OnPluginInitialize(IServiceProvider serviceProvider)
     {
@@ -100,6 +101,33 @@ public class MSLXPluginEntry : IPlugin
 
 > [!TIP]
 > **宿主自动注销兜底机制**：除了在 `OnUnload()` 中手动注销事件外，宿主底层在卸载插件程序集时，会自动调用 `SDK.MSLX.Events.UnregisterPlugin(pluginAssembly)` 移除该插件注册的所有事件处理器，杜绝内存泄漏与悬挂引用。
+
+### 1.2 多节点支持声明 (`SupportsMultiNode`, v1.7.6+)
+
+自 MSLX `v1.7.6` 起，`IPlugin` 引入了 `SupportsMultiNode` 契约，用于向宿主声明插件在分布式多节点环境下的适配状态：
+
+```csharp
+using MSLX.SDK.Models.Plugins;
+
+public PluginMultiNodeSupport SupportsMultiNode => PluginMultiNodeSupport.Supported;
+```
+
+> [!IMPORTANT]
+> **多节点适配是完全可选的！**
+> 插件开发者可以自由决定是否适配多节点。若插件属于仅在主节点运行的全局业务，或者开发者**不想适配多节点**，只需在入口中显式声明：
+> ```csharp
+> public PluginMultiNodeSupport SupportsMultiNode => PluginMultiNodeSupport.Unsupported;
+> ```
+> 设为 `Unsupported`（对应元数据字符串 `"false"`）后：
+> 1. 面板“已安装插件”列表会为该插件标注 **「仅主节点界面」** 标签；
+> 2. 当用户切换至任意子节点（`?node=<id>`）时，宿主前端引擎会自动跳过该插件的路由与扩展插槽加载，彻底避免因未适配产生的 404 或 SignalR 崩溃报错；
+> 3. 后台程序依然可以正常被管理并同步至子节点运行。
+
+| 枚举值 | 元数据字符串 | 面板状态标签 | 说明与宿主行为 |
+| :--- | :--- | :--- | :--- |
+| `PluginMultiNodeSupport.Supported` | `"true"` | `已适配多节点` (绿色) | **推荐适配模式**。前端在子节点无缝加载，配合 `MSLX_NodeContext.use()` 自动绑定节点 |
+| `PluginMultiNodeSupport.Unsupported` | `"false"` | `仅主节点界面` (黄色) | **不想适配多节点时使用**。前端仅在主节点加载，子节点自动忽略，零报错风险 |
+| `PluginMultiNodeSupport.NoTest` | `"no-test"` | `多节点未验证` (灰色) | 默认缺省值。旧插件未做显式声明时的兼容状态，宿主尝试兼容加载 |
 
 ---
 

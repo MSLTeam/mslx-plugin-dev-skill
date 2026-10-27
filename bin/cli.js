@@ -115,9 +115,10 @@ function findFiles(dir, extensions, ignoreDirs = ['node_modules', '.git', 'bin',
 
 function handleAudit() {
   printBanner();
-  console.log(`[INFO] 正在扫描当前工作区插件工程合规性: ${c.cyan}${process.cwd()}${c.reset}\n`);
+  const rawArg = process.argv[3];
+  const cwd = rawArg ? path.resolve(process.cwd(), rawArg) : process.cwd();
+  console.log(`[INFO] 正在扫描当前工作区插件工程合规性: ${c.cyan}${cwd}${c.reset}\n`);
 
-  const cwd = process.cwd();
   const vueFiles = findFiles(cwd, ['.vue']);
   const csFiles = findFiles(cwd, ['.cs']);
   const unoFiles = findFiles(cwd, ['.ts', '.js']).filter(f => f.includes('uno.config'));
@@ -230,6 +231,16 @@ function handleAudit() {
         title: '未注销的全局监听器或定时器',
         desc: '检测到注册了事件监听器或定时器，但在组件卸载时可能未释放，会导致内存泄漏。',
         fix: '在 onBeforeUnmount / onUnmounted 生命周期中成对执行注销与清理。'
+      });
+    }
+
+    // 1.8 检查 SignalR Hub 连接是否使用 MSLX_NodeContext (v1.7.6+)
+    if (content.includes('HubConnectionBuilder') && !content.includes('MSLX_NodeContext')) {
+      warnings.push({
+        file: relPath,
+        title: '自建 SignalR 连接可能在子节点失效 (v1.7.6+)',
+        desc: '直接通过 HubConnectionBuilder 建立连接在多节点环境下无法自动获取子节点地址和 Token。建议改用宿主提供的 (window as any).MSLX_NodeContext.use().createHub(...)。',
+        fix: '改用 const node = (window as any).MSLX_NodeContext.use(); const hub = node.createHub("/api/hubs/plugin/{plugin-id}/...");'
       });
     }
   }
@@ -366,6 +377,16 @@ function handleAudit() {
         title: '事件处理器中潜在的主线程阻塞',
         desc: '宿主事件总线为同步派发，若在事件处理器中执行磁盘压缩或网络请求将导致宿主卡顿。',
         fix: '将耗时操作转移至 Task.Run(async () => { ... }) 后台线程执行。'
+      });
+    }
+
+    // 检查是否声明了 SupportsMultiNode (v1.7.6+)
+    if (content.includes(': IPlugin') && !content.includes('SupportsMultiNode')) {
+      warnings.push({
+        file: relPath,
+        title: '未显式声明 SupportsMultiNode (v1.7.6+)',
+        desc: '建议在 IPlugin 入口显式声明 SupportsMultiNode。若支持多节点返回 PluginMultiNodeSupport.Supported；若不想适配多节点，请声明为 PluginMultiNodeSupport.Unsupported（前端仅在主节点加载，子节点自动忽略防报错）。',
+        fix: '添加 public PluginMultiNodeSupport SupportsMultiNode => PluginMultiNodeSupport.Supported (或 Unsupported);'
       });
     }
   }

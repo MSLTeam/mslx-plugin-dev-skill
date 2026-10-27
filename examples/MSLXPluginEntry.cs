@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MSLX.SDK;
 using MSLX.SDK.Events;
 using MSLX.SDK.Interfaces;
+using MSLX.SDK.Models.Plugins;
 
 // 必须声明 ApplicationPart，以便宿主发现并加载插件的 Controller
 [assembly: ApplicationPart("MSLX.Plugin.Awesome")]
@@ -24,6 +25,13 @@ public class MSLXPluginEntry : IPlugin
     public string Developer => "MSLTeam";
     public string AuthorUrl => "https://github.com/MSLTeam";
     public string PluginUrl => "https://mslx-plugins.mslmc.net/plugins/mslx-plugin-awesome";
+
+    /// <summary>
+    /// 多节点适配声明 (v1.7.6+)。完全可选：
+    /// - 若支持多节点：返回 PluginMultiNodeSupport.Supported (前端在子节点加载并通过 MSLX_NodeContext 绑定)
+    /// - 若不想适配多节点：返回 PluginMultiNodeSupport.Unsupported (前端仅在主节点加载，子节点自动跳过防报错)
+    /// </summary>
+    public PluginMultiNodeSupport SupportsMultiNode => PluginMultiNodeSupport.Supported;
 
     public void OnPluginInitialize(IServiceProvider serviceProvider)
     {

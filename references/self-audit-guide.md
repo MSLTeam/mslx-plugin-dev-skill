@@ -124,6 +124,12 @@ MSLX WebPanel 拥有高度统一的现代毛玻璃与卡片视觉风格。当用
   2. **媒体展示场景**（瓦片切片、图标、头像、缩略图）：前端必须使用 `userStore.getMediaTokenParam()` 或 `userStore.getMediaToken()`，后端接口必须标注 `[AllowTokenScope(TokenScopes.Media)]`。
   3. **文件导出下载场景**（备份包下载、存档导出、长视频流）：前端必须使用 `await userStore.getDownloadToken()`，后端接口必须标注 `[AllowTokenScope(TokenScopes.Download)]`。
 
+### 4.6 多节点适配与连接隔离审查 (Multi-Node & SignalR, v1.7.6+)
+* **审查标准**：
+  1. **多节点可选适配**：多节点适配并非强制要求。如果插件不需要适配子节点，必须在 C# 入口声明 `SupportsMultiNode => PluginMultiNodeSupport.Unsupported;`，确保前端仅在主节点加载，防止在子节点出现 404 或未捕获异常。
+  2. **SignalR 与请求上下文**：若声明支持多节点，前端必须通过 `(window as any).MSLX_NodeContext.use()` 获取 `request` 与 `createHub()`，严禁在前端直接读取主节点 `useUserStore().baseUrl` 或主 Token 进行地址拼接，以防发往错误节点。
+  3. **业务重连重新订阅**：通过 `node.createHub()` 创建的连接自动具备断线重连底座，但重连后的群组重新加入逻辑（如 `hub.onreconnected` 内重新加入频道）必须由插件前端自行编写保证业务连续性。
+
 ---
 
 ## 维度五：事件总线、线程安全与打包生命周期 (Lifecycle & Packaging)

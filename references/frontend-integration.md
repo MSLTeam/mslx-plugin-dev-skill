@@ -379,7 +379,7 @@ const saveConfig = async (payload: any) => {
 
 ---
 
-## 6. 宿主大文件分片上传工具 (`window.useFileUpload`)
+## 7. 宿主大文件分片上传工具 (`window.useFileUpload`)
 
 若插件涉及上传大文件（如备份包、整合包、模组或自定义核心），可直接复用宿主全局暴露的 `useFileUpload` Hook，具备自动分片、动态并发、指数退避重试与实时进度追踪能力：
 
@@ -422,5 +422,148 @@ const handleFileChange = async (e: Event) => {
     <t-progress :percentage="uploadProgress" theme="circle" :stroke-width="4" />
   </div>
   <input v-else type="file" @change="handleFileChange" />
+</template>
+```
+
+---
+
+## 8. 节点上下文工具与多节点适配 (`MSLX_NodeContext`, v1.7.6+)
+
+### 8.1 背景与核心定位
+
+自 MSLX `v1.7.6` 起，面板支持了分布式子节点的插件运行与同步（通过 URL `?node=<id>` 切换目标节点）。
+
+在多节点环境下：
+* **Token 与 BaseUrl 错位**：旧插件若直接读取主节点 `useUserStore().baseUrl` 或主 `token`，操作会误发到主节点；而在子节点页面上，主节点 Token 无法通过子节点的安全校验。
+* **SignalR Hub 路径与重连**：直接使用 `new HubConnectionBuilder().withUrl(...)` 无法自适应子节点的基础地址与动态 Token 工厂（`accessTokenFactory`）。
+* **生命周期与连接泄漏**：在节点间快速切换或离开页面时，未及时 `stop()` 的 Hub 连接与未取消的请求会造成内存泄露与后台幽灵连接。
+
+宿主全局暴露了 `(window as any).MSLX_NodeContext`：
+```ts
+(window as any).MSLX_NodeContext = { 
+  create: createPluginNodeContext, 
+  use: usePluginNodeContext 
+};
+```
+
+> [!TIP]
+> **多节点适配是完全可选的！**
+> 如果开发者**不想适配多节点**，或者插件逻辑仅属于主节点独有功能，**前端无需任何修改**。只需在后端 C# 入口声明：
+> ```csharp
+> public PluginMultiNodeSupport SupportsMultiNode => PluginMultiNodeSupport.Unsupported;
+> ```
+> 标记为 `Unsupported`（元数据 `"false"`）后，宿主在子节点（`?node=<id>`）下会**直接跳过加载该插件的前端路由与插槽**，并在面板显示「仅主节点界面」，零报错风险。
+
+---
+
+### 8.2 两个方法：`use()` vs `create()`
+
+```ts
+const { use, create } = (window as any).MSLX_NodeContext;
+```
+
+1. **`use()`（强烈推荐）**：
+   - 在 Vue 插件组件的 `<script setup>` 顶层调用，通过 Vue `inject` 获取宿主预先注入的目标节点上下文。
+   - **全生命周期自动托管**：组件卸载（`onBeforeUnmount`）时，宿主自动终止在途 HTTP 请求（`AbortController`），并优雅断开由此创建的全部 SignalR Hub 连接。
+2. **`create(nodeId?, pluginId?)`**：
+   - 手动创建指定节点的独立上下文，用于组件外或跨节点特殊任务。
+   - **必须由调用方自行调用 `dispose()` 释放**。
+
+---
+
+### 8.3 上下文对象核心能力
+
+通过 `const node = (window as any).MSLX_NodeContext.use()` 获取到的实例包含：
+
+* **`node.request`（相对路径 HTTP 客户端）**：
+  - 包含 `request/get/post/put/patch/delete`；
+  - **强制相对路径**：仅接受 `/api/...` 形式相对地址，防止意外跨域；
+  - **自动路由定向**：自动追加 `targetNodeId: nodeId`，指向当前激活节点；
+  - **继承自动解包**：直接返回 `code === 200` 解包后的 `data` 数据本体。
+* **`node.createHub(path)`（SignalR 托管工厂）**：
+  - 传入 Hub 相对地址（如 `/api/hubs/plugin/mslx-plugin-stun/stun`）；
+  - 自动根据当前节点计算最终 BaseUrl 与 `x-node-id` 参数；
+  - 自动绑定子节点动态凭据获取工厂（`accessTokenFactory`）与 `.withAutomaticReconnect()`；
+  - 自动纳入当前上下文的销毁集合，组件卸载自动停止。
+  > [!WARNING]
+  > **重连后业务订阅边界**：`node.createHub` 负责底层连通与重连底座。但 SignalR 重连后的业务逻辑（如重新 `hub.invoke('JoinGroup', ...)`）仍由插件代码自行在 `hub.onreconnected` 中处理。
+  > 此外，旧插件自己写死 SignalR 地址的代码不会自动变更，需主动迁移至此 API。
+* **`node.resourceUrl(path, scope)`（节点专属降权资源 URL）**：
+  - `scope: 'media'`（默认）：向当前节点申请 `media_token`，生成适用于 `<img>` 或切片图层的带凭据链接；
+  - `scope: 'download'`：向当前节点申请 `download_token`，生成大文件/备份下载链接；
+  - 后端接口仍需对应标注 `[AllowTokenScope]`。
+* **`node.nodeId` / `node.pluginId` / `node.getTarget()` / `node.dispose()`**。
+
+---
+
+### 8.4 实战组件标杆示例 (STUN 隧道插件)
+
+```vue
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { MessagePlugin } from 'tdesign-vue-next';
+
+// 1. setup 顶层获取节点上下文
+const node = (window as any).MSLX_NodeContext?.use();
+
+const runningData = ref<any>(null);
+let hubConnection: any = null;
+
+// 2. 发起当前节点的接口请求 (相对路径，自动路由到目标节点)
+const fetchStatus = async () => {
+  try {
+    const res = await node.request.get({
+      url: '/api/plugin/mslx-plugin-stun/status'
+    });
+    runningData.value = res;
+  } catch (err: any) {
+    MessagePlugin.error(`获取状态失败: ${err.message}`);
+  }
+};
+
+// 3. 建立多节点自适应的 SignalR Hub 连接
+const setupHub = async () => {
+  if (!node) return;
+
+  // 宿主自动处理当前节点的 BaseUrl、Token 协商与自动重连
+  const hub = node.createHub('/api/hubs/plugin/mslx-plugin-stun/stun');
+  hubConnection = hub;
+
+  // 监听服务端数据推送
+  hub.on('TrafficUpdate', (data: any) => {
+    console.log('[STUN] 当前节点流量更新:', data);
+  });
+
+  // 处理业务级重连与重新订阅
+  hub.onreconnected(async () => {
+    console.log('[STUN] SignalR 已重连，重新加入业务监控组...');
+    try {
+      await hub.invoke('SubscribeTunnelTraffic', 'default');
+    } catch (e) {
+      console.error('重新加入业务组失败:', e);
+    }
+  });
+
+  try {
+    await hub.start();
+    await hub.invoke('SubscribeTunnelTraffic', 'default');
+    console.log('[STUN] SignalR 连接成功并已订阅！');
+  } catch (err) {
+    console.error('[STUN] SignalR 连接失败:', err);
+  }
+};
+
+onMounted(() => {
+  fetchStatus();
+  setupHub();
+  // 宿主在组件卸载时会自动清理 node 上的在途请求与 Hub，无需手动 dispose
+});
+</script>
+
+<template>
+  <div class="design-card p-5">
+    <div class="text-sm text-[var(--td-text-color-secondary)]">当前运行节点: {{ node?.nodeId }}</div>
+    <div class="mt-2 text-base font-bold text-[var(--td-text-color-primary)]">{{ runningData }}</div>
+  </div>
 </template>
 ```

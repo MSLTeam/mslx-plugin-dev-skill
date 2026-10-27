@@ -71,6 +71,21 @@ MSLX 插件界面根据挂载场景分为**三大形态**，严禁混淆：
   * 地图切片瓦片、实例图标与图片展示：使用 `Media Token`（前端 `userStore.getMediaTokenParam()`，后端标注 `[AllowTokenScope(TokenScopes.Media)]`）。
   * 备份包导出、文件下载与长视频流：使用 `Download Token`（前端 `await userStore.getDownloadToken()`，后端标注 `[AllowTokenScope(TokenScopes.Download)]`）。
 
+### 6. 多节点适配与节点上下文 (v1.7.6+，可选适配)
+* **多节点适配完全可选（Opt-in）**：开发者可自由选择是否适配子节点。若不想适配多节点，或者业务仅针对主节点，**必须在后端入口显式声明**：
+  ```csharp
+  public PluginMultiNodeSupport SupportsMultiNode => PluginMultiNodeSupport.Unsupported;
+  ```
+  声明为 `Unsupported`（对应元数据 `"false"`）后，宿主在用户访问子节点时会自动跳过加载该插件前端，并在插件管理中显示「仅主节点界面」，从根本上避免跨节点报错。
+* **选择适配时的前端规范**：当在子节点（`?node=<id>`）挂载运行或需要建立 SignalR Hub 连接时，**必须且只需**在组件 setup 中调用：
+  ```ts
+  const node = (window as any).MSLX_NodeContext.use();
+  const hub = node.createHub('/api/hubs/plugin/{plugin-id}/xxx');
+  ```
+  - **严禁直接读取主节点 `useUserStore().baseUrl` 或主 Token** 用于子节点请求或 SignalR 拼装！
+  - `node.request`、`node.createHub` 与 `node.resourceUrl` 会由宿主自动绑定目标节点地址、动态 Token 工厂与 `.withAutomaticReconnect()`，并在组件销毁时自动清理。
+  - **业务重连与分组订阅**：SignalR 重连后的业务逻辑与业务组重新订阅（如 `hub.onreconnected`、加入房间/分组）仍需由插件自行处理。
+
 ---
 
 ## 常用开发命令
@@ -144,3 +159,4 @@ npx @mslteam/mslx-plugin-dev-skill audit
 - [ ] C# 文件读写均在 `this.Config().GetDataPath()` 沙箱内，无路径穿越漏洞。
 - [ ] 事件处理器均使用 `Task.Run` 异步化，未阻塞宿主主执行流。
 - [ ] 媒体资源展示或文件下载是否按规范使用 Scoped Token (Media Token / Download Token)，严禁在 URL Query 中泄露主管理员 Token。
+- [ ] **多节点适配检查 (v1.7.6+)**：若未适配子节点，是否已在入口声明 `SupportsMultiNode => PluginMultiNodeSupport.Unsupported`；若已适配，前端是否使用 `(window as any).MSLX_NodeContext.use()` 获取请求、资源与 SignalR Hub，而非硬编码主节点地址。
