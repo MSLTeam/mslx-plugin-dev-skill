@@ -159,4 +159,5 @@ npx @mslteam/mslx-plugin-dev-skill audit
 - [ ] C# 文件读写均在 `this.Config().GetDataPath()` 沙箱内，无路径穿越漏洞。
 - [ ] 事件处理器均使用 `Task.Run` 异步化，未阻塞宿主主执行流。
 - [ ] 媒体资源展示或文件下载是否按规范使用 Scoped Token (Media Token / Download Token)，严禁在 URL Query 中泄露主管理员 Token。
+- [ ] **全屏公开页面路由配置**：若使用 `PLUGINS_PUBLIC_LAYOUT` 专属公共布局，顶层父路由必须配置 `meta: { hidden: true }`，防止宿主后台侧边菜单栏将其误解析渲染为空白菜单项。
 - [ ] **多节点适配检查 (v1.7.6+)**：若未适配子节点，是否已在入口声明 `SupportsMultiNode => PluginMultiNodeSupport.Unsupported`；若已适配，前端是否使用 `(window as any).MSLX_NodeContext.use()` 获取请求、资源与 SignalR Hub，而非硬编码主节点地址。

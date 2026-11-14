@@ -283,6 +283,28 @@ function handleAudit() {
     }
   }
 
+  // 3.1 审查 pluginEntry 路由配置
+  const pluginEntryFiles = findFiles(cwd, ['.ts', '.js']).filter(f => f.includes('pluginEntry'));
+  for (const file of pluginEntryFiles) {
+    const relPath = path.relative(cwd, file);
+    const content = fs.readFileSync(file, 'utf-8');
+
+    if (content.includes('PLUGINS_PUBLIC_LAYOUT')) {
+      const regex = /\{\s*[^}]*component\s*:\s*['"]PLUGINS_PUBLIC_LAYOUT['"][^}]*children\s*:/gs;
+      let match;
+      while ((match = regex.exec(content)) !== null) {
+        if (!match[0].includes('hidden: true') && !match[0].includes('hidden:true')) {
+          warnings.push({
+            file: relPath,
+            title: 'PLUGINS_PUBLIC_LAYOUT 父路由缺少 meta: { hidden: true }',
+            desc: '使用 PLUGINS_PUBLIC_LAYOUT 时，若父级路由未配置 meta: { hidden: true }，宿主后台侧边菜单栏会将其解析为单项菜单并渲染出空白菜单项。',
+            fix: '在包含 component: "PLUGINS_PUBLIC_LAYOUT" 的顶层路由对象中补充 meta: { hidden: true }。'
+          });
+        }
+      }
+    }
+  }
+
   // 4. 审查 C# 工程文件 (.csproj)
   for (const file of csprojFiles) {
     const relPath = path.relative(cwd, file);

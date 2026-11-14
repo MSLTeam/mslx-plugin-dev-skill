@@ -71,7 +71,7 @@ export const pluginConfig: PluginConfig = {
 适用于向外部普通玩家公开展示的**全屏单页**（如网页世界地图、对外服务器大屏看板、状态大屏等）。此类页面**不包含**宿主顶部 Header 导航栏与侧边 SideNav 菜单，且**允许未登录访客直接访问**。
 
 1. **后端声明契约**：在 `MSLXPluginEntry.cs` 中声明 `public bool HasPublicPages => true;`；
-2. **前端独立路由**：若需享受宿主背景壁纸与 `.design-card` 高质感磨砂半透明卡片样式，使用 `PLUGINS_PUBLIC_LAYOUT` 专属公共布局；并在子路由 `meta` 中配置 `anonymous: true` 与 `hidden: true`：
+2. **前端独立路由**：若需享受宿主背景壁纸与 `.design-card` 高质感磨砂半透明卡片样式，使用 `PLUGINS_PUBLIC_LAYOUT` 专属公共布局；**必须在父级路由声明 `meta: { hidden: true }`（防止宿主侧边菜单渲染空白占位菜单）**，并在子路由 `meta` 中配置 `anonymous: true` 与 `hidden: true`：
 
 ```ts
 import PublicWhitelistPage from './views/PublicWhitelistPage.vue';
@@ -79,6 +79,9 @@ import PublicWhitelistPage from './views/PublicWhitelistPage.vue';
 {
   path: '/public/whitelist',
   component: 'PLUGINS_PUBLIC_LAYOUT', // 核心：使用公共页面专属布局，自动继承壁纸与 design-card
+  meta: {
+    hidden: true, // 核心：父路由必须声明 hidden，防止在后台侧边菜单渲染空白项
+  },
   children: [
     {
       path: '',
