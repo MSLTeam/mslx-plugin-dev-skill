@@ -105,12 +105,13 @@ import PublicWhitelistPage from './views/PublicWhitelistPage.vue';
 
 ---
 
-## 3. 9 大官方扩展插槽 (Extensions / Slots)
+## 3. 10 大官方扩展插槽 (Extensions / Slots)
 
 MSLX 允许插件将 UI 组件深度注入至宿主控制台的关键槽位：
 
 | 插槽名称 | 注入位置 | 必要属性 / 触发事件 | 接收 Props |
 | :--- | :--- | :--- | :--- |
+| `header-action` | 面板顶部导航栏右侧快捷操作区 (v1.7.9+) | `id`, `label`, `type` (`'drawer'` | `'floating'` | `'route'` | `'link'` | `'action'` | `'dropdown'`)，支持 `placement: 'header' | 'more'` 与 `roleCode` | `drawer` / `floating`: `props: { visible: boolean }`，关闭派发 `emit('update:visible', false)`；`action`: `run(context)` 接收 `MSLX_NodeContext` |
 | `instance-console-dropdown` | 实例控制台“更多功能”下拉菜单 | `label`, `icon`，组件内需 `defineExpose({ open })` | `serverId: number` |
 | `instance-console-overview-bottom` | 实例控制台玩家卡片下方 | - | `serverId: number`, `status: number` |
 | `instance-setting-more` | 实例设置“更多功能”区域 | - | `serverId: number` |
@@ -163,6 +164,295 @@ defineExpose({
 </template>
 ```
 
+### 3.2 顶部快捷操作插槽实战 (`header-action`, v1.7.9+)
+
+`header-action` 允许插件在面板顶部全局导航栏（Header 右侧操作区）注册快捷入口，支持侧滑抽屉、可拖拽悬浮窗、页面快速跳转、外部安全链接、异步操作回调以及多级下拉菜单。
+
+#### 1. 双端自适应排版规则
+* **桌面端 (宽度 ≥ 1024px)**：直显**第一个**符合权限且未显式指定 `placement: 'more'` 的入口作为顶部独立操作按钮或下拉菜单；其余项和指定了 `placement: 'more'` 的入口收纳在「更多操作」下拉菜单中。
+* **移动端 (宽度 < 1024px)**：所有插件入口统一整合在「更多操作」菜单中，并与宿主移动端原生功能（GitHub、CNB、后台任务、帮助文档、系统设置）无缝融合。
+
+#### 2. 6 大动作类型 (`type`)
+* **`drawer`**：侧滑抽屉。`component` 接收 `props: { visible: Boolean }`，关闭时发送 `emit('update:visible', false)`。推荐使用 `<t-drawer attach="body">`。
+* **`floating`**：悬浮窗。`component` 同样接收 `visible` prop 与 `update:visible` 事件。推荐使用 `<teleport to="body">` 搭配 `fixed` 定位与指针捕获拖拽手柄。
+* **`route`**：站内路由跳转。`to` 接收绝对站内路径（以 `/` 开头）或 Vue Router 路由对象，在子节点环境下自动继承 `query.node`。
+* **`link`**：外部安全链接。`href` 必须为以 `http://` 或 `https://` 开头的绝对 URL，`target` 默认 `_blank`。
+* **`action`**：执行回调操作。`run(context)` 接收当前节点上下文 `MSLX_NodeContext`，支持异步返回 `Promise`，执行期间按钮自动禁用防重复点击，完成或切换节点时自动释放。
+* **`dropdown`**：多级下拉菜单。`items` 包含上述除 dropdown 之外的叶子动作项数组。
+
+#### 3. 生命周期与多节点机制
+* **状态持久**：抽屉与悬浮窗在用户首次打开时按需挂载，同节点内关闭后**保留组件实例与内部响应式状态**。
+* **自动清理**：切换节点（`?node=...`）、登出或重载插件时，宿主自动销毁所有面板并中止进行中的 `action` 回调（`context.signal.abort()`）。
+* **节点上下文**：组件内可直接使用 `(window as any).MSLX_NodeContext.use()` 获取当前绑定的目标节点上下文。
+
+#### 4. 前端入口配置示例 (`pluginEntry.ts`)
+
+```ts
+import { MessagePlugin } from 'tdesign-vue-next';
+import ExampleDrawer from './views/ExampleDrawer.vue';
+import ExampleFloating from './views/ExampleFloating.vue';
+
+export const pluginConfig = {
+  name: 'mslx-plugin-header-example',
+  version: '1.0.0',
+  routes: [ /* 路由配置 */ ],
+  extensions: [
+    // 1. 顶层下拉工具菜单：桌面端默认直显为顶部快捷图标按钮
+    {
+      slot: 'header-action',
+      type: 'dropdown',
+      id: 'tools',
+      label: '示例工具',
+      icon: 'app',
+      items: [
+        // 侧滑抽屉（仅管理员可见）
+        {
+          type: 'drawer',
+          id: 'drawer',
+          label: '示例抽屉',
+          icon: 'view-list',
+          component: ExampleDrawer,
+          roleCode: ['admin'],
+        },
+        // 站内安全路由跳转
+        {
+          type: 'route',
+          id: 'page',
+          label: '示例页面',
+          icon: 'jump',
+          to: { name: 'MyPluginPage', query: { source: 'header' } },
+        },
+        // 外部帮助链接
+        {
+          type: 'link',
+          id: 'docs',
+          label: '开发文档',
+          icon: 'help-circle',
+          href: 'https://mslx.mslmc.cn/plugin-dev/',
+          target: '_blank',
+        },
+        // 异步回调执行操作
+        {
+          type: 'action',
+          id: 'message',
+          label: '发送示例消息',
+          icon: 'chat',
+          run: async ({ nodeId }) => {
+            MessagePlugin.success(`当前节点 ${nodeId} 操作已触发`);
+          },
+        },
+      ],
+    },
+
+    // 2. 悬浮窗入口：显式指定 placement: 'more'，收纳到「更多操作」中
+    {
+      slot: 'header-action',
+      type: 'floating',
+      id: 'floating',
+      label: '示例悬浮窗',
+      icon: 'desktop',
+      component: ExampleFloating,
+      placement: 'more',
+    },
+  ],
+};
+```
+
+#### 5. 抽屉组件示例 (`ExampleDrawer.vue`)
+
+```vue
+<script setup lang="ts">
+import { Drawer as TDrawer } from 'tdesign-vue-next';
+
+defineProps<{ visible: boolean }>();
+const emit = defineEmits<{ (e: 'update:visible', visible: boolean): void }>();
+const node = (window as any).MSLX_NodeContext?.use();
+
+const handleClose = () => {
+  emit('update:visible', false);
+};
+</script>
+
+<template>
+  <t-drawer
+    :visible="visible"
+    attach="body"
+    header="示例抽屉"
+    :footer="false"
+    size="min(360px, 100vw)"
+    @close="handleClose"
+  >
+    <div class="p-4 flex flex-col gap-2">
+      <p class="text-[var(--td-text-color-primary)]">当前节点：{{ node?.nodeId }}</p>
+      <p class="text-xs text-[var(--td-text-color-secondary)]">
+        抽屉关闭后状态保留，切换节点或重载插件时自动释放。
+      </p>
+    </div>
+  </t-drawer>
+</template>
+```
+
+#### 6. 可拖拽与无障碍悬浮窗组件示例 (`ExampleFloating.vue`)
+
+```vue
+<script setup lang="ts">
+import { ref, watch, onBeforeUnmount, nextTick } from 'vue';
+import { Button as TButton } from 'tdesign-vue-next';
+
+const props = defineProps<{ visible: boolean }>();
+const emit = defineEmits<{ (e: 'update:visible', visible: boolean): void }>();
+const node = (window as any).MSLX_NodeContext?.use();
+const panel = ref<HTMLElement | null>(null);
+const handle = ref<HTMLButtonElement | null>(null);
+const position = ref({ x: Infinity, y: 72 });
+const dragging = ref(false);
+
+let drag: { id: number; handle: HTMLElement; x: number; y: number } | undefined;
+let observer: ResizeObserver | undefined;
+
+function move(x: number, y: number) {
+  const box = panel.value?.getBoundingClientRect();
+  if (!box) return;
+  position.value = {
+    x: Math.max(8, Math.min(x, window.innerWidth - box.width - 8)),
+    y: Math.max(8, Math.min(y, window.innerHeight - box.height - 8)),
+  };
+}
+
+function resize() {
+  move(position.value.x, position.value.y);
+}
+
+function stopDrag() {
+  if (drag && drag.handle.hasPointerCapture(drag.id)) {
+    drag.handle.releasePointerCapture(drag.id);
+  }
+  drag = undefined;
+  dragging.value = false;
+}
+
+function startDrag(event: PointerEvent) {
+  if (event.button !== 0 || !event.isPrimary) return;
+  const box = panel.value?.getBoundingClientRect();
+  if (!box) return;
+  const target = event.currentTarget as HTMLElement;
+  drag = {
+    id: event.pointerId,
+    handle: target,
+    x: event.clientX - box.left,
+    y: event.clientY - box.top,
+  };
+  target.setPointerCapture(event.pointerId);
+  dragging.value = true;
+}
+
+function dragMove(event: PointerEvent) {
+  if (drag && drag.id === event.pointerId) {
+    move(event.clientX - drag.x, event.clientY - drag.y);
+  }
+}
+
+function finishDrag(event: PointerEvent) {
+  if (drag?.id !== event.pointerId) return;
+  stopDrag();
+}
+
+function moveWithKeys(event: KeyboardEvent) {
+  const offsets: Record<string, [number, number]> = {
+    ArrowLeft: [-15, 0],
+    ArrowRight: [15, 0],
+    ArrowUp: [0, -15],
+    ArrowDown: [0, 15],
+  };
+  const offset = offsets[event.key];
+  if (!offset) return;
+  event.preventDefault();
+  move(position.value.x + offset[0], position.value.y + offset[1]);
+}
+
+function cleanup() {
+  stopDrag();
+  window.removeEventListener('resize', resize);
+  observer?.disconnect();
+}
+
+const close = () => emit('update:visible', false);
+
+watch(
+  () => props.visible,
+  async (visible) => {
+    cleanup();
+    if (!visible) return;
+    await nextTick();
+    if (!panel.value || !props.visible) return;
+    resize();
+    window.addEventListener('resize', resize);
+    observer = new ResizeObserver(resize);
+    observer.observe(panel.value);
+    handle.value?.focus();
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(cleanup);
+</script>
+
+<template>
+  <teleport to="body">
+    <section
+      v-if="visible"
+      ref="panel"
+      role="dialog"
+      aria-label="示例悬浮窗"
+      :style="{
+        position: 'fixed',
+        zIndex: 1500,
+        left: `${Number.isFinite(position.x) ? position.x : 8}px`,
+        top: `${position.y}px`,
+        width: 'min(340px, calc(100vw - 16px))',
+        maxHeight: 'calc(100dvh - 16px)',
+        overflow: 'auto',
+        padding: '12px',
+        border: '1px solid var(--td-component-border)',
+        borderRadius: 'var(--td-radius-large)',
+        background: 'var(--td-bg-color-container)',
+        color: 'var(--td-text-color-primary)',
+        boxShadow: 'var(--td-shadow-2)',
+      }"
+      @keydown.esc.stop="close"
+    >
+      <div style="display: flex; gap: 8px; align-items: center">
+        <button
+          ref="handle"
+          type="button"
+          aria-label="移动悬浮窗，可使用方向键"
+          :style="{
+            cursor: dragging ? 'grabbing' : 'grab',
+            touchAction: 'none',
+            userSelect: 'none',
+            padding: '6px',
+          }"
+          @pointerdown="startDrag"
+          @pointermove="dragMove"
+          @pointerup="finishDrag"
+          @pointercancel="finishDrag"
+          @lostpointercapture="finishDrag"
+          @keydown="moveWithKeys"
+        >
+          ⠿
+        </button>
+        <strong style="flex: 1">示例悬浮窗</strong>
+        <t-button variant="text" size="small" @click="close">关闭</t-button>
+      </div>
+
+      <p class="mt-2 text-sm text-[var(--td-text-color-primary)]">
+        当前节点 ID: {{ node?.nodeId }}
+      </p>
+    </section>
+  </teleport>
+</template>
+```
+
 ---
 
 ## 4. 宿主状态透传 (MSLX_Stores)
@@ -179,7 +469,7 @@ defineExpose({
 | **instance** | `useInstanceListStore()` | `instanceList` 实例数组、`totalInstanceCount`、`refreshInstanceList()` |
 | **node** | `useNodeStore()` | `slaveNodes` 子节点清单、`activeNodeId` 当前激活节点、`fetchNodes(force?)` 拉取节点列表、`setActiveNode()` 切换激活节点 |
 | **frp** | `useTunnelsStore()` | `frpList` 隧道列表、`getTunnels()` 刷新数据 |
-| **pluginUI** | `usePluginUIStore()` | `extensions` 插槽注册表、`registerExtension()` |
+| **pluginUI** | `usePluginUIStore()` | `extensions` 插槽注册表、`registerExtension()`（管理页面插槽与 `header-action` 顶部快捷入口） |
 | **webpanel** | `useWebpanelStore()` | `settings`（深/浅色背景与组件透明度、终端模糊度等）、`fetchSettings()`、`saveSettings()`、`uploadImage(file)` |
 | **update** | `useUpdateStore()` | `updateInfo` 最新版本信息、`checkAppUpdate()` |
 

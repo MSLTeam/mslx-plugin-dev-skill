@@ -17,13 +17,13 @@ MSLX WebPanel 拥有高度统一的现代毛玻璃与卡片视觉风格。当用
 ### 1.1 审查清单
 | 审查项 | 判定标准 | 严重级别 | 常见违规写法 | 正确合规写法 |
 | :--- | :--- | :--- | :--- | :--- |
-| **卡片类名标记** | 独立页面与大卡片插槽根容器必须声明 `design-card`；模态框 (`<t-dialog>`) 与内嵌 Tab 容器豁免并遵循各自形态 | **严重** | `<div class="my-card">`（页面级）<br>或在 `<t-dialog>` 外再硬套 `design-card` | 页面级：`<div class="design-card relative flex flex-col ...">`<br>弹窗级：直接以 `<t-dialog>` 为根 |
+| **卡片类名标记** | 独立页面与大卡片插槽根容器必须声明 `design-card`；模态框 (`<t-dialog>`)、抽屉 (`<t-drawer>`) 与内嵌 Tab 容器豁免并遵循各自形态 | **严重** | `<div class="my-card">`（页面级）<br>或在 `<t-dialog>` / `<t-drawer>` 外再硬套 `design-card` | 页面级：`<div class="design-card relative flex flex-col ...">`<br>弹窗/抽屉级：直接以组件为根 |
 | **卡片背景色** | 卡片只需声明 `design-card` 类，宿主会自动注入半透明主题背景，严禁硬编码纯白背景 | **严重** | `class="bg-white"`<br>`style="background:#fff;"` | `class="design-card ..."`（无需写额外 bg 类） |
 | **UnoCSS 变量语法** | 严禁在 CSS 变量后直接追加斜杠透明度（UnoCSS 无法解析该语法） | **严重** | `bg-[var(...)]/80`<br>`border-[var(...)]/60` | 声明 `design-card` 继承宿主透明度，或使用标准语义类 |
 | **标题标杆装饰** | 模块标题栏左侧使用 MSLX 专属品牌胶囊指示条 | **建议** | 自行绘制图标或无修饰纯文本 | `<div class="w-1.5 h-5 bg-[var(--color-primary)] rounded-full shadow-[0_0_8px_var(--color-primary-light)] opacity-90"></div>` |
 | **统一圆角规范** | 主卡片统一使用 `rounded-2xl`，统计小卡片使用 `rounded-xl` | **建议** | `rounded-none`, `rounded-sm` | `rounded-2xl` 或 `rounded-xl` |
 | **主题边框继承** | 使用 TDesign 语义边框或 Zinc 半透明边框 | **建议** | `border-black`, `border-gray-300` | `border border-[var(--td-component-border)]` |
-| **弹窗遮罩穿透** | `<t-dialog>` 必须配置 `attach="body"` | **严重** | `<t-dialog :visible="v">` | `<t-dialog attach="body" :visible="v">` |
+| **弹窗遮罩穿透** | `<t-dialog>` 与 `<t-drawer>` 必须配置 `attach="body"` | **严重** | `<t-dialog :visible="v">`<br>`<t-drawer :visible="v">` | `<t-dialog attach="body" :visible="v">`<br>`<t-drawer attach="body" :visible="v">` |
 
 ### 1.2 为什么必须使用 `design-card`？
 在宿主布局（`MSLX.WebPanel/src/layouts/index.vue`）中，底层注入了如下动态控制规则：

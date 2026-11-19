@@ -29,7 +29,7 @@ description: >-
 * 编写任何 Controller 路由、SignalR Hub、SDK 事件与配置方法时，必须优先以 `https://mslx.mslmc.cn/llms-full.txt` 及 `https://mslx.mslmc.cn/llms.txt` 中记录的最新方法签名为准，严禁凭空猜测宿主 API。
 
 ### 1. 宿主视觉融入：分场景排版与 TDesign 语义变量
-MSLX 插件界面根据挂载场景分为**三大形态**，严禁混淆：
+MSLX 插件界面根据挂载场景分为**四大形态**，严禁混淆：
 * **形态 A：独立页面与卡片插槽 (Card Views)**
   * 适用场景：单页路由（`/mslx-plugin-xxx`）、仪表盘插槽（`dashboard-index-after-system-status`）、设置页底部插槽（`settings-*-bottom`）。
   * **规范**：顶层容器**必须且只需**声明 `class="design-card relative flex flex-col rounded-2xl border border-[var(--td-component-border)] shadow-sm p-5 sm:p-6"`。宿主 WebPanel 布局引擎通过 `:deep(.design-card)` 会自动注入动态半透明底色与边框（亮色模式 `--comp-op-light`、暗色模式 `--comp-op-dark`）。**卡片容器本身无需手写任何背景色类（无需写 `bg-white` 或 `bg-[var(...)]`）**。
@@ -39,6 +39,9 @@ MSLX 插件界面根据挂载场景分为**三大形态**，严禁混淆：
 * **形态 C：宿主选项卡面板 (Settings Tabs)**
   * 适用场景：实例设置侧边栏选项卡（`instance-settings-tab`）、穿透服务商切换页（`frp-create-provider`）。
   * **规范**：宿主弹窗内部已有统一背景和内边距，面板顶层容器使用扁平流式容器 `<div class="flex flex-col mx-auto w-full pb-8">`，**严禁外层嵌套 `design-card`**；使用小节标题条排版。
+* **形态 D：顶部快捷栏与抽屉/悬浮窗 (Header Actions, Drawers & Floating Panels)**
+  * 适用场景：顶部导航栏快捷操作插槽（`header-action`，v1.7.9+）。
+  * **规范**：抽屉组件使用 `<t-drawer attach="body">`；悬浮窗组件使用 `<teleport to="body">` 搭配 `position: fixed` 与主题语义变量。组件接收 `props: { visible: Boolean }` 并派发 `emit('update:visible', false)`；关闭时保留内部状态，切换节点或注销时自动销毁。
 * **绝对杜绝硬编码白底**：**严禁**使用 `bg-white`、`#ffffff`、`style="background: white"`！在暗黑模式或用户自定义毛玻璃壁纸下，硬编码白底会导致灾难性的视觉割裂。
 * **统一语义变量**：次级嵌套容器可使用 `bg-[var(--td-bg-color-secondarycontainer)]`，**严禁使用 UnoCSS 不支持的 `bg-[var(...)]/80` 斜杠透明度写法**；文本使用 `text-[var(--td-text-color-primary)]` 与 `text-[var(--td-text-color-secondary)]`，边框使用 `border-[var(--td-component-border)]`。
 * **标准品牌标识条**：模块与小节标题栏左侧统一配置胶囊竖条（卡片主标题使用带柔和光晕版，Tab 面板内嵌小节标题使用扁平微型版 `w-1 h-4`）：
@@ -128,8 +131,8 @@ npx @mslteam/mslx-plugin-dev-skill audit
 
 根据具体开发任务，查阅本 Skill 本地对应的参考规范：
 
-* **视觉规范与 3 大布局形态**：查阅 [frontend-design-system.md](./references/frontend-design-system.md)
-* **前端路由、9 大扩展插槽、宿主 Store 与 useFileUpload**：查阅 [frontend-integration.md](./references/frontend-integration.md)
+* **视觉规范与 4 大布局形态**：查阅 [frontend-design-system.md](./references/frontend-design-system.md)
+* **前端路由、10 大扩展插槽 (含 header-action)、宿主 Store 与 useFileUpload**：查阅 [frontend-integration.md](./references/frontend-integration.md)
 * **后端架构、SDK 核心桥接、事件总线与后台任务池**：查阅 [backend-architecture.md](./references/backend-architecture.md)
 * **全方位自我审查指南与合规打分表**：查阅 [self-audit-guide.md](./references/self-audit-guide.md)
 * **.NET 10 脚手架、单文件打包与发布流程**：查阅 [project-scaffold-publish.md](./references/project-scaffold-publish.md)

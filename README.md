@@ -39,7 +39,7 @@ npx @mslteam/mslx-plugin-dev-skill audit
 | **[SKILL.md](./SKILL.md)** | **Agent 核心指令与开发准则**：触发时机、开发全流程索引、核心开发准则与发布前自检。 |
 | **[self-audit-guide.md](./references/self-audit-guide.md)** | **全方位自我审查指南**：宿主视觉契合度、无冲突样式隔离、双端响应式、高危安全漏洞防御 5 大维度检查表。 |
 | **[frontend-design-system.md](./references/frontend-design-system.md)** | **前端视觉规范**：`design-card` 运作机理、暗黑模式透明度注入、PC/移动端断点、TDesign 语义色彩字典。 |
-| **[frontend-integration.md](./references/frontend-integration.md)** | **前端接入指南**：单页/多页路由、9 大扩展插槽规范、Pinia 状态透传与 `mslxRequest` 自动解包。 |
+| **[frontend-integration.md](./references/frontend-integration.md)** | **前端接入指南**：单页/多页路由、10 大扩展插槽规范 (含 header-action)、Pinia 状态透传与 `mslxRequest` 自动解包。 |
 | **[backend-architecture.md](./references/backend-architecture.md)** | **后端架构与 SDK**：`IPlugin` 生命周期、`SDK.MSLX.Events` 异步化、全局任务进度条、跨插件配置联动。 |
 | **[project-scaffold-publish.md](./references/project-scaffold-publish.md)** | **脚手架与发布流程**：`.NET` 模板脚手架、`ILRepack` 单文件合并编译与插件市场审核流程。 |
 

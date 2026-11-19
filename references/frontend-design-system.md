@@ -45,8 +45,8 @@ MSLX 允许用户在设置中自定义面板背景壁纸与透明度。在宿主
 * **`border border-[var(--td-component-border)]`**：细腻的语义边框，亮色模式下浅灰，暗色模式下深灰微透。
 * **`shadow-sm hover:shadow-md`**：轻量投影，悬浮增强交互反馈。
 
-### 1.3 三大挂载场景形态规范 (Three Layout Archetypes)
-在 MSLX 插件开发中，组件根据挂载位置分为三种标准形态，开发者与 AI 必须严格区分，严禁混用：
+### 1.3 四大挂载场景形态规范 (Four Layout Archetypes)
+在 MSLX 插件开发中，组件根据挂载位置分为四种标准形态，开发者与 AI 必须严格区分，严禁混用：
 
 #### 场景 A：独立页面卡片与大卡片插槽 (Card Views)
 * **适用插槽/页面**：单页路由（如 `/mslx-plugin-cloud-backup`）、`dashboard-index-after-system-status`、`settings-profile-bottom`、`settings-daemon-bottom`。
@@ -97,6 +97,13 @@ MSLX 允许用户在设置中自定义面板背景壁纸与透明度。在宿主
   </div>
 </template>
 ```
+
+#### 场景 D：顶部抽屉与悬浮窗组件 (Header Drawers & Floating Panels, v1.7.9+)
+* **适用插槽/页面**：`header-action` 抽屉 (`drawer`) 与悬浮窗 (`floating`) 组件。
+* **结构规范**：
+  * **抽屉组件 (`drawer`)**：直接以 `<t-drawer attach="body">` 为根节点，声明 `:visible="visible"`，通过 `emit('update:visible', false)` 处理关闭；**严禁包裹 `design-card`**。
+  * **悬浮窗组件 (`floating`)**：使用 `<teleport to="body">` 渲染在根层级，采用固定定位 `position: fixed`，声明 `role="dialog"` 与 `aria-label`；样式使用宿主语义变量（如 `background: var(--td-bg-color-container)`、`border: 1px solid var(--td-component-border)`、`box-shadow: var(--td-shadow-2)`）；同样通过 `props.visible` 与 `emit('update:visible', false)` 控制开关。
+  * **状态保持**：抽屉与悬浮窗在同一节点内关闭后保留组件内部状态（如表单填写内容或拖拽坐标），切节点/注销时自动销毁。
 
 ---
 

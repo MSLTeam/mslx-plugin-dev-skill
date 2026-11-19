@@ -187,9 +187,9 @@ function handleAudit() {
       }
     });
 
-    // 1.4 检查卡片根容器是否使用 design-card (智能跳过模态框和选项卡面板)
+    // 1.4 检查卡片根容器是否使用 design-card (智能跳过模态框、抽屉、悬浮窗和选项卡面板)
     if (content.includes('<template>') && (relPath.includes('views') || relPath.includes('components'))) {
-      const isModal = /<t-dialog\b/i.test(content) || /Modal\.vue$/i.test(relPath) || /Dialog\.vue$/i.test(relPath) || /Dropdown.*\.vue$/i.test(relPath);
+      const isModal = /<t-dialog\b/i.test(content) || /<t-drawer\b/i.test(content) || /Modal\.vue$/i.test(relPath) || /Dialog\.vue$/i.test(relPath) || /Dropdown.*\.vue$/i.test(relPath) || /Drawer\.vue$/i.test(relPath) || /Floating\.vue$/i.test(relPath);
       const isTabOrPanel = /Tab\.vue$/i.test(relPath) || /Provider\.vue$/i.test(relPath);
 
       if (!isModal && !isTabOrPanel && !content.includes('design-card') && !relPath.toLowerCase().includes('icon')) {
@@ -202,13 +202,21 @@ function handleAudit() {
       }
     }
 
-    // 1.5 检查 t-dialog 是否加 attach="body"
+    // 1.5 检查 t-dialog / t-drawer 是否加 attach="body"
     if (content.includes('<t-dialog') && !content.includes('attach="body"')) {
       issues.push({
         file: relPath,
         title: '弹窗缺少 attach="body"',
         desc: '使用 <t-dialog> 未配置 attach="body"，弹窗容易被父级卡片的 overflow-hidden 截断或遮罩错位。',
         fix: '为 <t-dialog> 添加 attach="body" 属性。'
+      });
+    }
+    if (content.includes('<t-drawer') && !content.includes('attach="body"')) {
+      issues.push({
+        file: relPath,
+        title: '抽屉缺少 attach="body"',
+        desc: '使用 <t-drawer> 未配置 attach="body"，抽屉容易被父级容器的 overflow 截断或遮罩错位。',
+        fix: '为 <t-drawer> 添加 attach="body" 属性。'
       });
     }
 
